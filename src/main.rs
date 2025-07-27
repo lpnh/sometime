@@ -48,7 +48,7 @@ fn main() {
 
     let pool = SlotPool::new(200 * 200 * 4, &shm).expect("Failed to create pool");
 
-    let mut clock_widget = ClockWidget {
+    let mut clock_widget = Widget {
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
@@ -83,7 +83,7 @@ fn main() {
     }
 }
 
-struct ClockWidget {
+struct Widget {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
@@ -99,7 +99,7 @@ struct ClockWidget {
     visible: bool,
 }
 
-impl ClockWidget {
+impl Widget {
     fn draw_clock(&mut self, qh: &QueueHandle<Self>) {
         let width = self.width;
         let height = self.height;

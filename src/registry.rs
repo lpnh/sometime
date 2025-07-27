@@ -21,9 +21,9 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
 };
 
-use super::ClockWidget;
+use super::Widget;
 
-impl CompositorHandler for ClockWidget {
+impl CompositorHandler for Widget {
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -73,7 +73,7 @@ impl CompositorHandler for ClockWidget {
     }
 }
 
-impl OutputHandler for ClockWidget {
+impl OutputHandler for Widget {
     fn output_state(&mut self) -> &mut OutputState {
         &mut self.output_state
     }
@@ -101,7 +101,7 @@ impl OutputHandler for ClockWidget {
     }
 }
 
-impl LayerShellHandler for ClockWidget {
+impl LayerShellHandler for Widget {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
         self.exit = true;
     }
@@ -124,7 +124,7 @@ impl LayerShellHandler for ClockWidget {
     }
 }
 
-impl SeatHandler for ClockWidget {
+impl SeatHandler for Widget {
     fn seat_state(&mut self) -> &mut SeatState {
         &mut self.seat_state
     }
@@ -162,7 +162,7 @@ impl SeatHandler for ClockWidget {
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-impl KeyboardHandler for ClockWidget {
+impl KeyboardHandler for Widget {
     fn enter(
         &mut self,
         _: &Connection,
@@ -229,22 +229,22 @@ impl KeyboardHandler for ClockWidget {
     }
 }
 
-impl ShmHandler for ClockWidget {
+impl ShmHandler for Widget {
     fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm
     }
 }
 
 // Delegate implementations
-delegate_compositor!(ClockWidget);
-delegate_output!(ClockWidget);
-delegate_shm!(ClockWidget);
-delegate_seat!(ClockWidget);
-delegate_keyboard!(ClockWidget);
-delegate_layer!(ClockWidget);
-delegate_registry!(ClockWidget);
+delegate_compositor!(Widget);
+delegate_output!(Widget);
+delegate_shm!(Widget);
+delegate_seat!(Widget);
+delegate_keyboard!(Widget);
+delegate_layer!(Widget);
+delegate_registry!(Widget);
 
-impl ProvidesRegistryState for ClockWidget {
+impl ProvidesRegistryState for Widget {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
