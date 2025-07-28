@@ -19,7 +19,7 @@ impl Point {
     }
 
     // Create a point at a distance and angle from the current point
-    pub fn with_radius_and_angle(&self, distance: f32, angle: f32) -> Self {
+    pub fn with_radius_and_angle(self, distance: f32, angle: f32) -> Self {
         Self {
             x: self.x + distance * angle.cos(),
             y: self.y + distance * angle.sin(),
@@ -27,24 +27,24 @@ impl Point {
     }
 
     // Distance from this point to another
-    pub fn distance_to(&self, other: &Self) -> f32 {
+    pub fn distance_to(self, other: &Self) -> f32 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         (dx * dx + dy * dy).sqrt()
     }
 
     // Check if point is within canvas bounds
-    pub fn is_valid(&self, width: u32, height: u32) -> bool {
+    pub fn is_valid(self, width: u32, height: u32) -> bool {
         self.x >= 0.0 && self.x < width as f32 && self.y >= 0.0 && self.y < height as f32
     }
 
     // Convert to pixel coordinates
-    pub fn as_coords(&self) -> (u32, u32) {
+    pub fn as_coords(self) -> (u32, u32) {
         (self.x as u32, self.y as u32)
     }
 
     // Offset by integer amounts
-    pub fn offset(&self, dx: i32, dy: i32) -> Self {
+    pub fn offset(self, dx: i32, dy: i32) -> Self {
         Self {
             x: self.x + dx as f32,
             y: self.y + dy as f32,
