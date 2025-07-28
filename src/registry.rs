@@ -187,7 +187,7 @@ impl KeyboardHandler for Widget {
         _: u32,
     ) {
         if self.layer.wl_surface() == surface {
-            self.keyboard_focus = false;
+            self.exit = true;
         }
     }
 
