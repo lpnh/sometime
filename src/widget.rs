@@ -12,6 +12,8 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_shm},
 };
 
+use super::theme::{Bgra, Theme};
+
 pub struct Widget {
     pub registry_state: RegistryState,
     pub seat_state: SeatState,
@@ -29,7 +31,7 @@ pub struct Widget {
 }
 
 impl Widget {
-    pub fn draw_clock(&mut self, qh: &QueueHandle<Self>) {
+    pub fn draw_clock_with_theme<T: Theme>(&mut self, qh: &QueueHandle<Self>) {
         let width = self.width;
         let height = self.height;
         let stride = width as i32 * 4;
@@ -55,7 +57,7 @@ impl Widget {
 
         // Clear canvas with transparent background
         for pixel in pixel_data.chunks_exact_mut(4) {
-            pixel.copy_from_slice(&[0x00, 0x00, 0x00, 0x00]); // BGRA format
+            pixel.copy_from_slice(&[0x00, 0x00, 0x00, 0x00]);
         }
 
         // Draw clock face
@@ -66,7 +68,7 @@ impl Widget {
             center_x,
             center_y,
             radius,
-            [0xFF, 0xFF, 0xFF, 0xFF],
+            T::FRAME,
         );
         Self::draw_circle(
             &mut pixel_data,
@@ -75,7 +77,7 @@ impl Widget {
             center_x,
             center_y,
             radius - 2.0,
-            [0x20, 0x20, 0x20, 0xFF],
+            T::FACE,
         );
 
         // Draw hour markers
@@ -97,7 +99,7 @@ impl Widget {
                 y1,
                 x2,
                 y2,
-                [0xFF, 0xFF, 0xFF, 0xFF],
+                T::HOUR_MARKERS,
             );
         }
 
@@ -114,7 +116,7 @@ impl Widget {
             center_y,
             hour_x,
             hour_y,
-            [0xFF, 0xFF, 0xFF, 0xFF],
+            T::HANDS,
             3,
         );
 
@@ -130,7 +132,7 @@ impl Widget {
             center_y,
             minute_x,
             minute_y,
-            [0xFF, 0xFF, 0xFF, 0xFF],
+            T::HANDS,
             2,
         );
 
@@ -142,7 +144,7 @@ impl Widget {
             center_x,
             center_y,
             5.0,
-            [0xFF, 0xFF, 0xFF, 0xFF],
+            T::HANDS,
         );
 
         // Copy back to canvas
@@ -169,7 +171,7 @@ impl Widget {
         cx: f32,
         cy: f32,
         radius: f32,
-        color: [u8; 4],
+        color: Bgra,
     ) {
         for y in 0..height {
             for x in 0..width {
@@ -180,7 +182,7 @@ impl Widget {
                 if distance <= radius {
                     let index = ((y * width + x) * 4) as usize;
                     if index + 3 < canvas.len() {
-                        canvas[index..index + 4].copy_from_slice(&color);
+                        canvas[index..index + 4].copy_from_slice(color.as_ref());
                     }
                 }
             }
@@ -195,7 +197,7 @@ impl Widget {
         y1: f32,
         x2: f32,
         y2: f32,
-        color: [u8; 4],
+        color: Bgra,
     ) {
         let dx = (x2 - x1).abs();
         let dy = (y2 - y1).abs();
@@ -215,7 +217,7 @@ impl Widget {
             if x < width && y < height {
                 let index = ((y * width + x) * 4) as usize;
                 if index + 3 < canvas.len() {
-                    canvas[index..index + 4].copy_from_slice(&color);
+                    canvas[index..index + 4].copy_from_slice(color.as_ref());
                 }
             }
         }
@@ -229,7 +231,7 @@ impl Widget {
         y1: f32,
         x2: f32,
         y2: f32,
-        color: [u8; 4],
+        color: Bgra,
         thickness: i32,
     ) {
         for dx in -thickness / 2..=thickness / 2 {

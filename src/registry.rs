@@ -21,7 +21,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
 };
 
-use super::Widget;
+use super::{Widget, theme::CatppuccinMocha};
 
 impl CompositorHandler for Widget {
     fn scale_factor_changed(
@@ -50,7 +50,7 @@ impl CompositorHandler for Widget {
         _time: u32,
     ) {
         if self.visible {
-            self.draw_clock(qh);
+            self.draw_clock_with_theme::<CatppuccinMocha>(qh);
         }
     }
 
@@ -119,7 +119,7 @@ impl LayerShellHandler for Widget {
 
         if self.first_configure {
             self.first_configure = false;
-            self.draw_clock(qh);
+            self.draw_clock_with_theme::<CatppuccinMocha>(qh);
         }
     }
 }

@@ -1,4 +1,5 @@
 mod registry;
+mod theme;
 mod widget;
 use widget::Widget;
 
