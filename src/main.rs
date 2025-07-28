@@ -18,6 +18,8 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{Connection, globals::registry_queue_init};
 
+const SIDE: u32 = 512;
+
 fn main() {
     env_logger::init();
 
@@ -41,11 +43,11 @@ fn main() {
     );
 
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
-    layer.set_size(512, 512);
+    layer.set_size(SIDE, SIDE);
 
     layer.commit();
 
-    let pool = SlotPool::new(512 * 512 * 4, &shm).expect("Failed to create pool");
+    let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
 
     let mut clock_widget = Widget {
         registry_state: RegistryState::new(&globals),
@@ -55,8 +57,8 @@ fn main() {
         exit: false,
         first_configure: true,
         pool,
-        width: 512,
-        height: 512,
+        width: SIDE,
+        height: SIDE,
         layer,
         keyboard: None,
         keyboard_focus: false,

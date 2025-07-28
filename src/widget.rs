@@ -52,18 +52,17 @@ impl Widget {
         // Create our canvas helper - no borrowing of self here!
         let mut canvas = Canvas::new(width, height);
 
-        // Draw clock face
+        // Clock face
         canvas.draw_circle(radius, T::FRAME);
         canvas.draw_circle(radius - 2.0, T::FACE);
 
-        canvas.draw_hour_hand(now.hour(), now.minute(), radius, T::HANDS);
-
-        canvas.draw_minute_hand(now.minute(), radius, T::HANDS);
-
-        canvas.draw_second_hand(now.second(), radius, T::HANDS);
-
         // Center dot
-        canvas.draw_circle(5.0, T::HANDS);
+        canvas.draw_circle(4.0, T::HANDS);
+
+        // Hands
+        canvas.draw_hour_hand(now.hour(), now.minute(), radius, T::HANDS);
+        canvas.draw_minute_hand(now.minute(), radius, T::HANDS);
+        canvas.draw_second_hand(now.second(), radius, T::HANDS);
 
         // Copy back to the surface
         surface.copy_from_slice(canvas.get_data());
