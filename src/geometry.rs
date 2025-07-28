@@ -67,8 +67,4 @@ impl Angle {
     pub fn second(second: u32) -> f32 {
         second as f32 * PI / 30.0 - PI / 2.0
     }
-
-    pub fn hour_marker(hour: i32) -> f32 {
-        (hour as f32 * PI / 6.0) - PI / 2.0
-    }
 }

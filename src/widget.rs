@@ -11,7 +11,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_shm},
 };
 
-use super::{canvas::Canvas, geometry::Angle, theme::Theme};
+use super::{canvas::Canvas, theme::Theme};
 
 pub struct Widget {
     pub registry_state: RegistryState,
@@ -55,14 +55,6 @@ impl Widget {
         // Draw clock face
         canvas.draw_circle(radius, T::FRAME);
         canvas.draw_circle(radius - 2.0, T::FACE);
-
-        // Draw hour markers
-        for hour in 0..12 {
-            let angle = Angle::hour_marker(hour);
-            let size = 3.0;
-
-            canvas.draw_marker(angle, radius - 9.0, size, T::HOUR_MARKERS);
-        }
 
         canvas.draw_hour_hand(now.hour(), now.minute(), radius, T::HANDS);
 

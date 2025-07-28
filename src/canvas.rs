@@ -45,25 +45,6 @@ impl Canvas {
         }
     }
 
-    pub fn draw_marker(&mut self, angle: f32, radius: f32, size: f32, color: Bgra) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let point = Point::from_u32(x, y);
-                let distance = self
-                    .center
-                    .with_radius_and_angle(radius, angle)
-                    .distance_to(&point);
-
-                if distance <= size {
-                    let index = ((y * self.width + x) * 4) as usize;
-                    if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4].copy_from_slice(color.as_ref());
-                    }
-                }
-            }
-        }
-    }
-
     pub fn draw_hour_hand(&mut self, hour: u32, minute: u32, radius: f32, color: Bgra) {
         let hour_angle = Angle::hour(hour, minute);
         self.draw_thick_line_from_center(radius * 0.5, hour_angle, color, 3);

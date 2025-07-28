@@ -15,7 +15,6 @@ impl AsRef<[u8]> for Bgra {
 
 pub trait Theme {
     const FACE: Bgra;
-    const HOUR_MARKERS: Bgra;
     const FRAME: Bgra;
     const HANDS: Bgra;
 }
@@ -24,7 +23,6 @@ pub struct CatppuccinMocha;
 
 impl Theme for CatppuccinMocha {
     const FACE: Bgra = Bgra::from_rgba(30, 30, 46, 216); // Base
-    const HOUR_MARKERS: Bgra = Bgra::from_rgba(88, 91, 112, 208); // Surface2
     const FRAME: Bgra = Bgra::from_rgba(49, 50, 68, 208); // Surface0
     const HANDS: Bgra = Bgra::from_rgba(203, 166, 247, 208); // Mauve
 }
