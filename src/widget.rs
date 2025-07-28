@@ -83,24 +83,13 @@ impl Widget {
         // Draw hour markers
         for hour in 0..12 {
             let angle = (hour as f32 * PI / 6.0) - PI / 2.0;
-            let inner_radius = radius - 10.0;
-            let outer_radius = radius - 5.0;
+            let marker_radius = radius - 12.0;
+            let size = 4.0;
 
-            let x1 = center_x + inner_radius * angle.cos();
-            let y1 = center_y + inner_radius * angle.sin();
-            let x2 = center_x + outer_radius * angle.cos();
-            let y2 = center_y + outer_radius * angle.sin();
+            let x = center_x + marker_radius * angle.cos();
+            let y = center_y + marker_radius * angle.sin();
 
-            Self::draw_line(
-                &mut pixel_data,
-                width,
-                height,
-                x1,
-                y1,
-                x2,
-                y2,
-                T::HOUR_MARKERS,
-            );
+            Self::draw_circle(&mut pixel_data, width, height, x, y, size, T::HOUR_MARKERS);
         }
 
         // Hour hand
