@@ -125,6 +125,22 @@ impl Widget {
             2,
         );
 
+        // Second hand
+        let second_angle = now.second() as f32 * PI / 30.0 - PI / 2.0;
+        let second_x = center_x + (radius * 0.9) * second_angle.cos();
+        let second_y = center_y + (radius * 0.9) * second_angle.sin();
+        Self::draw_thick_line(
+            &mut pixel_data,
+            width,
+            height,
+            center_x,
+            center_y,
+            second_x,
+            second_y,
+            T::HANDS,
+            1,
+        );
+
         // Center dot
         Self::draw_circle(
             &mut pixel_data,
