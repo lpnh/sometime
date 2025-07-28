@@ -39,11 +39,11 @@ fn main() {
     );
 
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
-    layer.set_size(400, 400);
+    layer.set_size(512, 512);
 
     layer.commit();
 
-    let pool = SlotPool::new(200 * 200 * 4, &shm).expect("Failed to create pool");
+    let pool = SlotPool::new(512 * 512 * 4, &shm).expect("Failed to create pool");
 
     let mut clock_widget = Widget {
         registry_state: RegistryState::new(&globals),
@@ -53,8 +53,8 @@ fn main() {
         exit: false,
         first_configure: true,
         pool,
-        width: 200,
-        height: 200,
+        width: 512,
+        height: 512,
         layer,
         keyboard: None,
         keyboard_focus: false,
