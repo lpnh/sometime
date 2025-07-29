@@ -8,7 +8,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     QueueHandle,
-    protocol::{wl_keyboard, wl_shm},
+    protocol::{wl_keyboard, wl_pointer, wl_shm},
 };
 
 use super::{canvas::Canvas, theme::Theme};
@@ -26,6 +26,7 @@ pub struct Widget {
     pub layer: LayerSurface,
     pub keyboard: Option<wl_keyboard::WlKeyboard>,
     pub keyboard_focus: bool,
+    pub pointer: Option<wl_pointer::WlPointer>,
     pub visible: bool,
 }
 

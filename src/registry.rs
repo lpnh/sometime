@@ -1,13 +1,14 @@
 use smithay_client_toolkit::{
     compositor::CompositorHandler,
-    delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_registry,
-    delegate_seat, delegate_shm,
+    delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_pointer,
+    delegate_registry, delegate_seat, delegate_shm,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         Capability, SeatHandler, SeatState,
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
+        pointer::{PointerEvent, PointerEventKind, PointerHandler},
     },
     shell::{
         WaylandSurface,
@@ -18,7 +19,7 @@ use smithay_client_toolkit::{
 use std::num::NonZeroU32;
 use wayland_client::{
     Connection, QueueHandle,
-    protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_surface},
 };
 
 use super::{Widget, theme::CatppuccinMocha};
@@ -145,6 +146,14 @@ impl SeatHandler for Widget {
                 .expect("Failed to create keyboard");
             self.keyboard = Some(keyboard);
         }
+
+        if capability == Capability::Pointer {
+            let pointer = self
+                .seat_state
+                .get_pointer(qh, &seat)
+                .expect("Failed to create pointer");
+            self.pointer = Some(pointer);
+        }
     }
 
     fn remove_capability(
@@ -156,6 +165,10 @@ impl SeatHandler for Widget {
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_some() {
             self.keyboard.take().unwrap().release();
+        }
+
+        if capability == Capability::Pointer && self.pointer.is_some() {
+            self.pointer.take().unwrap().release();
         }
     }
 
@@ -197,14 +210,9 @@ impl KeyboardHandler for Widget {
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
-        event: KeyEvent,
+        _event: KeyEvent,
     ) {
-        match event.keysym {
-            Keysym::Escape | Keysym::q => {
-                self.exit = true;
-            }
-            _ => {}
-        }
+        self.exit = true;
     }
 
     fn release_key(
@@ -229,6 +237,28 @@ impl KeyboardHandler for Widget {
     }
 }
 
+impl PointerHandler for Widget {
+    fn pointer_frame(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        events: &[PointerEvent],
+    ) {
+        for event in events {
+            // Ignore events for other surfaces
+            if &event.surface != self.layer.wl_surface() {
+                continue;
+            }
+            if let PointerEventKind::Enter { serial, .. } = event.kind {
+                pointer.set_cursor(serial, None, 0, 0);
+            } else {
+                self.exit = true;
+            }
+        }
+    }
+}
+
 impl ShmHandler for Widget {
     fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm
@@ -241,6 +271,7 @@ delegate_output!(Widget);
 delegate_shm!(Widget);
 delegate_seat!(Widget);
 delegate_keyboard!(Widget);
+delegate_pointer!(Widget);
 delegate_layer!(Widget);
 delegate_registry!(Widget);
 

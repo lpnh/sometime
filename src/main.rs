@@ -62,6 +62,7 @@ fn main() {
         layer,
         keyboard: None,
         keyboard_focus: false,
+        pointer: None,
         visible: true,
     };
 
