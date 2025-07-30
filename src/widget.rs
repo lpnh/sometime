@@ -39,21 +39,16 @@ impl Widget {
 
         // Get current time
         let now = chrono::Local::now();
-        let radius = side as f32 / 2.0;
 
-        let mut canvas = Canvas::new(side);
+        let mut canvas: Canvas<T> = Canvas::new(side);
 
-        // Clock face
-        canvas.draw_circle(radius, T::FRAME);
-        canvas.draw_circle(radius - 2.0, T::FACE);
-
-        // Center dot
-        canvas.draw_circle(4.0, T::HANDS);
+        // Clock face with center dot
+        canvas.draw_face();
 
         // Hands
-        canvas.draw_hour_hand(now.hour(), now.minute(), radius, T::HANDS);
-        canvas.draw_minute_hand(now.minute(), radius, T::HANDS);
-        canvas.draw_second_hand(now.second(), radius, T::HANDS);
+        canvas.draw_hour_hand(now.hour(), now.minute());
+        canvas.draw_minute_hand(now.minute());
+        canvas.draw_second_hand(now.second());
 
         // Copy back to the surface
         surface.copy_from_slice(canvas.get_data());

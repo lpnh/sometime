@@ -1,5 +1,4 @@
 mod canvas;
-mod geometry;
 mod registry;
 mod theme;
 mod widget;
