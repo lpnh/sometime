@@ -18,7 +18,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{Connection, globals::registry_queue_init};
 
-const SIDE: u32 = 512;
+const SIDE: i32 = 512;
 
 fn main() {
     env_logger::init();
@@ -43,7 +43,7 @@ fn main() {
     );
 
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
-    layer.set_size(SIDE, SIDE);
+    layer.set_size(SIDE as u32, SIDE as u32);
 
     layer.commit();
 
@@ -55,15 +55,12 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         shm,
         exit: false,
-        first_configure: true,
         pool,
-        width: SIDE,
-        height: SIDE,
+        side: SIDE,
         layer,
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
-        visible: true,
     };
 
     // TODO: Improve this

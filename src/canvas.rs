@@ -5,38 +5,36 @@ use super::{
 
 pub struct Canvas {
     pixel_data: Vec<u8>,
-    width: u32,
-    height: u32,
+    side: i32,
     center: Point,
 }
 
 impl Canvas {
-    pub fn new(width: u32, height: u32) -> Self {
-        let mut pixel_data = vec![0u8; (width * height * 4) as usize];
+    pub fn new(side: i32) -> Self {
+        let mut pixel_data = vec![0u8; (side * side * 4) as usize];
 
         // Clear canvas with transparent background
         for pixel in pixel_data.chunks_exact_mut(4) {
             pixel.copy_from_slice(&[0x00, 0x00, 0x00, 0x00]);
         }
 
-        let center = Point::from_u32(width / 2, height / 2);
+        let center = Point::from_i32(side / 2, side / 2);
 
         Self {
             pixel_data,
-            width,
-            height,
+            side,
             center,
         }
     }
 
     pub fn draw_circle(&mut self, radius: f32, color: Bgra) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let point = Point::from_u32(x, y);
+        for y in 0..self.side {
+            for x in 0..self.side {
+                let point = Point::from_i32(x, y);
                 let distance = self.center.distance_to(&point);
 
                 if distance <= radius {
-                    let index = ((y * self.width + x) * 4) as usize;
+                    let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4].copy_from_slice(color.as_ref());
                     }
@@ -94,9 +92,9 @@ impl Canvas {
         for i in 0..=steps {
             let point = Point::new(start.x + i as f32 * x_inc, start.y + i as f32 * y_inc);
 
-            if point.is_valid(self.width, self.height) {
+            if point.is_valid(self.side) {
                 let (x, y) = point.as_coords();
-                let index = ((y * self.width + x) * 4) as usize;
+                let index = ((y * self.side + x) * 4) as usize;
                 if index + 3 < self.pixel_data.len() {
                     self.pixel_data[index..index + 4].copy_from_slice(color.as_ref());
                 }

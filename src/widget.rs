@@ -19,39 +19,29 @@ pub struct Widget {
     pub output_state: OutputState,
     pub shm: Shm,
     pub exit: bool,
-    pub first_configure: bool,
     pub pool: SlotPool,
-    pub width: u32,
-    pub height: u32,
+    pub side: i32,
     pub layer: LayerSurface,
     pub keyboard: Option<wl_keyboard::WlKeyboard>,
     pub keyboard_focus: bool,
     pub pointer: Option<wl_pointer::WlPointer>,
-    pub visible: bool,
 }
 
 impl Widget {
     pub fn draw_clock_with_theme<T: Theme>(&mut self, qh: &QueueHandle<Self>) {
-        let width = self.width;
-        let height = self.height;
-        let stride = width as i32 * 4;
+        let side = self.side;
+        let stride = side * 4;
 
         let (buffer, surface) = self
             .pool
-            .create_buffer(
-                width as i32,
-                height as i32,
-                stride,
-                wl_shm::Format::Argb8888,
-            )
+            .create_buffer(side, side, stride, wl_shm::Format::Argb8888)
             .expect("create buffer");
 
         // Get current time
         let now = chrono::Local::now();
-        let radius = (width.min(height) as f32 / 2.0) - 10.0;
+        let radius = side as f32 / 2.0;
 
-        // Create our canvas helper - no borrowing of self here!
-        let mut canvas = Canvas::new(width, height);
+        let mut canvas = Canvas::new(side);
 
         // Clock face
         canvas.draw_circle(radius, T::FRAME);
@@ -69,9 +59,7 @@ impl Widget {
         surface.copy_from_slice(canvas.get_data());
 
         // Damage and present
-        self.layer
-            .wl_surface()
-            .damage_buffer(0, 0, width as i32, height as i32);
+        self.layer.wl_surface().damage_buffer(0, 0, side, side);
         self.layer
             .wl_surface()
             .frame(qh, self.layer.wl_surface().clone());

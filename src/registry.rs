@@ -16,7 +16,6 @@ use smithay_client_toolkit::{
     },
     shm::{Shm, ShmHandler},
 };
-use std::num::NonZeroU32;
 use wayland_client::{
     Connection, QueueHandle,
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_surface},
@@ -50,9 +49,7 @@ impl CompositorHandler for Widget {
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        if self.visible {
-            self.draw_clock_with_theme::<CatppuccinMocha>(qh);
-        }
+        self.draw_clock_with_theme::<CatppuccinMocha>(qh);
     }
 
     fn surface_enter(
@@ -112,16 +109,11 @@ impl LayerShellHandler for Widget {
         _conn: &Connection,
         qh: &QueueHandle<Self>,
         _layer: &LayerSurface,
-        configure: LayerSurfaceConfigure,
+        _configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        self.width = NonZeroU32::new(configure.new_size.0).map_or(200, NonZeroU32::get);
-        self.height = NonZeroU32::new(configure.new_size.1).map_or(200, NonZeroU32::get);
-
-        if self.first_configure {
-            self.first_configure = false;
-            self.draw_clock_with_theme::<CatppuccinMocha>(qh);
-        }
+        // called once
+        self.draw_clock_with_theme::<CatppuccinMocha>(qh);
     }
 }
 

@@ -11,7 +11,7 @@ impl Point {
         Self { x, y }
     }
 
-    pub fn from_u32(x: u32, y: u32) -> Self {
+    pub fn from_i32(x: i32, y: i32) -> Self {
         Self {
             x: x as f32,
             y: y as f32,
@@ -34,13 +34,13 @@ impl Point {
     }
 
     // Check if point is within canvas bounds
-    pub fn is_valid(self, width: u32, height: u32) -> bool {
-        self.x >= 0.0 && self.x < width as f32 && self.y >= 0.0 && self.y < height as f32
+    pub fn is_valid(self, side: i32) -> bool {
+        self.x >= 0.0 && self.x < side as f32 && self.y >= 0.0 && self.y < side as f32
     }
 
     // Convert to pixel coordinates
-    pub fn as_coords(self) -> (u32, u32) {
-        (self.x as u32, self.y as u32)
+    pub fn as_coords(self) -> (i32, i32) {
+        (self.x as i32, self.y as i32)
     }
 
     // Offset by integer amounts
