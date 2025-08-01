@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 pub struct Canvas<T: Theme> {
     pixel_data: Vec<u8>,
     side: i32,
+    radius: f32,
     _theme: PhantomData<T>,
 }
 
@@ -20,6 +21,7 @@ impl<T: Theme> Canvas<T> {
         Self {
             pixel_data,
             side,
+            radius: (side / 2) as f32,
             _theme: PhantomData,
         }
     }
@@ -36,13 +38,13 @@ impl<T: Theme> Canvas<T> {
                         self.pixel_data[index..index + 4].copy_from_slice(T::HANDS.as_ref());
                     }
                 // Face
-                } else if distance <= (self.side / 2) as f32 - 2.0 {
+                } else if distance <= self.radius - 2.0 {
                     let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4].copy_from_slice(T::FACE.as_ref());
                     }
                 // Frame
-                } else if distance <= (self.side / 2) as f32 {
+                } else if distance <= self.radius {
                     let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4].copy_from_slice(T::FRAME.as_ref());
@@ -68,7 +70,7 @@ impl<T: Theme> Canvas<T> {
     }
 
     pub fn draw_thick_line_from_center(&mut self, distance: f32, angle: f32, thickness: i32) {
-        let center = ((self.side / 2) as f32, (self.side / 2) as f32);
+        let center = (self.radius, self.radius);
         let end = Self::with_radius_and_angle(self, center, distance, angle);
 
         for dx in -thickness / 2..=thickness / 2 {
@@ -103,13 +105,13 @@ impl<T: Theme> Canvas<T> {
 
     // Functions to handle distances
     fn with_radius_and_angle(&self, one: (f32, f32), distance: f32, angle: f32) -> (f32, f32) {
-        let x = one.0 + ((self.side / 2) as f32 * distance) * angle.cos();
-        let y = one.1 + ((self.side / 2) as f32 * distance) * angle.sin();
+        let x = one.0 + (self.radius * distance) * angle.cos();
+        let y = one.1 + (self.radius * distance) * angle.sin();
         (x, y)
     }
     fn distance_to(&self, other: (i32, i32)) -> f32 {
-        let dx = (self.side / 2 - other.0) as f32;
-        let dy = (self.side / 2 - other.1) as f32;
+        let dx = self.radius - other.0 as f32;
+        let dy = self.radius - other.1 as f32;
         (dx * dx + dy * dy).sqrt()
     }
     fn offset(s: (f32, f32), dx: i32, dy: i32) -> (f32, f32) {
