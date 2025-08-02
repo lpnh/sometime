@@ -65,32 +65,41 @@ impl<T: Theme> Canvas<T> {
     }
 
     pub fn draw_thick_line_from_center(&mut self, distance: f32, angle: f32, thickness: i32) {
-        let center = (self.radius, self.radius);
-        let end = Self::with_radius_and_angle(self, center, distance, angle);
+        let end_x = self.radius + (self.radius * distance) * angle.cos();
+        let end_y = self.radius + (self.radius * distance) * angle.sin();
 
-        for dx in -thickness / 2..=thickness / 2 {
-            for dy in -thickness / 2..=thickness / 2 {
-                let (start_x, start_y) = Self::offset(center, dx, dy);
-                let (end_x, end_y) = Self::offset(end, dx, dy);
-                self.draw_line(start_x, start_y, end_x, end_y);
-            }
+        let dx = end_x - self.radius;
+        let dy = end_y - self.radius;
+        let steps = dx.abs().max(dy.abs()) as i32;
+
+        if steps == 0 {
+            return;
         }
-    }
 
-    pub fn draw_line(&mut self, start_x: f32, start_y: f32, end_x: f32, end_y: f32) {
-        let dx = (end_x - start_x).abs();
-        let dy = (end_y - start_y).abs();
-        let steps = dx.max(dy) as i32;
+        let x_inc = dx / steps as f32;
+        let y_inc = dy / steps as f32;
 
-        let x_inc = (end_x - start_x) / steps as f32;
-        let y_inc = (end_y - start_y) / steps as f32;
+        let mut x = self.radius;
+        let mut y = self.radius;
 
-        for i in 0..=steps {
-            let (x, y) = (start_x + i as f32 * x_inc, start_y + i as f32 * y_inc);
-            let index = ((y as i32 * self.side + x as i32) * 4) as usize;
-            if index + 3 < self.pixel_data.len() {
-                self.pixel_data[index..index + 4].copy_from_slice(T::HANDS.as_ref());
+        let half_thickness = thickness / 2;
+
+        for _ in 0..=steps {
+            for brush_dx in -half_thickness..=half_thickness {
+                for brush_dy in -half_thickness..=half_thickness {
+                    let px = (x + brush_dx as f32).round() as i32;
+                    let py = (y + brush_dy as f32).round() as i32;
+
+                    if px >= 0 && px < self.side && py >= 0 && py < self.side {
+                        let index = ((py * self.side + px) * 4) as usize;
+                        if index + 3 < self.pixel_data.len() {
+                            self.pixel_data[index..index + 4].copy_from_slice(T::HANDS.as_ref());
+                        }
+                    }
+                }
             }
+            x += x_inc;
+            y += y_inc;
         }
     }
 
@@ -98,19 +107,10 @@ impl<T: Theme> Canvas<T> {
         &self.pixel_data
     }
 
-    // Functions to handle distances
-    fn with_radius_and_angle(&self, one: (f32, f32), distance: f32, angle: f32) -> (f32, f32) {
-        let x = one.0 + (self.radius * distance) * angle.cos();
-        let y = one.1 + (self.radius * distance) * angle.sin();
-        (x, y)
-    }
     fn distance_to(&self, other: (i32, i32)) -> f32 {
         let dx = self.radius - other.0 as f32;
         let dy = self.radius - other.1 as f32;
         (dx * dx + dy * dy).sqrt()
-    }
-    fn offset(s: (f32, f32), dx: i32, dy: i32) -> (f32, f32) {
-        (s.0 + dx as f32, s.1 + dy as f32)
     }
 
     // Functions to handle clock angles
