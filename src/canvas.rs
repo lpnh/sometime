@@ -11,12 +11,7 @@ pub struct Canvas<T: Theme> {
 
 impl<T: Theme> Canvas<T> {
     pub fn new(side: i32) -> Self {
-        let mut pixel_data = vec![0u8; (side * side * 4) as usize];
-
-        // Clear canvas with transparent background
-        for pixel in pixel_data.chunks_exact_mut(4) {
-            pixel.copy_from_slice(&[0x00, 0x00, 0x00, 0x00]);
-        }
+        let pixel_data = vec![0u8; (side * side * 4) as usize];
 
         Self {
             pixel_data,
