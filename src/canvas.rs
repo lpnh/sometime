@@ -103,6 +103,11 @@ impl<T: Theme> Canvas<T> {
         }
     }
 
+    pub fn copy_from_raw(&mut self, src: &[u8]) {
+        debug_assert_eq!(self.pixel_data.len(), src.len());
+        self.pixel_data.copy_from_slice(src);
+    }
+
     pub fn get_data(&self) -> &[u8] {
         &self.pixel_data
     }

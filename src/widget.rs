@@ -1,4 +1,4 @@
-use chrono::Timelike;
+use chrono::{Local, Timelike};
 use smithay_client_toolkit::{
     output::OutputState,
     registry::RegistryState,
@@ -25,10 +25,39 @@ pub struct Widget {
     pub keyboard: Option<wl_keyboard::WlKeyboard>,
     pub keyboard_focus: bool,
     pub pointer: Option<wl_pointer::WlPointer>,
+    pub last_second: u32,
+    pub face_cache: Vec<u8>,
 }
 
 impl Widget {
-    pub fn draw_clock_with_theme<T: Theme>(&mut self, qh: &QueueHandle<Self>) {
+    pub fn init<T: Theme>(&mut self) {
+        let mut canvas: Canvas<T> = Canvas::new(self.side);
+        canvas.draw_face();
+        self.face_cache = canvas.get_data().to_vec();
+    }
+
+    pub fn draw<T: Theme>(&mut self, qh: &QueueHandle<Self>) {
+        let now = Local::now();
+        let sec = now.second();
+
+        if sec != self.last_second {
+            self.last_second = sec;
+            self.draw_clock_with_theme::<T>(qh, now.hour(), now.minute(), sec);
+        } else {
+            self.layer
+                .wl_surface()
+                .frame(qh, self.layer.wl_surface().clone());
+            self.layer.commit();
+        }
+    }
+
+    fn draw_clock_with_theme<T: Theme>(
+        &mut self,
+        qh: &QueueHandle<Self>,
+        hour: u32,
+        minute: u32,
+        second: u32,
+    ) {
         let side = self.side;
         let stride = side * 4;
 
@@ -37,23 +66,16 @@ impl Widget {
             .create_buffer(side, side, stride, wl_shm::Format::Argb8888)
             .expect("create buffer");
 
-        // Get current time
-        let now = chrono::Local::now();
-
         let mut canvas: Canvas<T> = Canvas::new(side);
 
-        // Clock face with center dot
-        canvas.draw_face();
+        canvas.copy_from_raw(&self.face_cache);
 
-        // Hands
-        canvas.draw_hour_hand(now.hour(), now.minute());
-        canvas.draw_minute_hand(now.minute());
-        canvas.draw_second_hand(now.second());
+        canvas.draw_hour_hand(hour, minute);
+        canvas.draw_minute_hand(minute);
+        canvas.draw_second_hand(second);
 
-        // Copy back to the surface
         surface.copy_from_slice(canvas.get_data());
 
-        // Damage and present
         self.layer.wl_surface().damage_buffer(0, 0, side, side);
         self.layer
             .wl_surface()

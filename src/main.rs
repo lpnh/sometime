@@ -32,14 +32,7 @@ fn main() {
 
     let surface = compositor.create_surface(&qh);
 
-    // Create a layer surface in the center
-    let layer = layer_shell.create_layer_surface(
-        &qh,
-        surface,
-        Layer::Overlay, // Above windows
-        Some("niri_clock"),
-        None,
-    );
+    let layer = layer_shell.create_layer_surface(&qh, surface, Layer::Overlay, Some("nick"), None);
 
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
     layer.set_size(SIDE as u32, SIDE as u32);
@@ -60,16 +53,9 @@ fn main() {
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
+        last_second: u32::MAX,
+        face_cache: Vec::new(),
     };
-
-    // TODO: Improve this
-    // Setup timer for clock updates
-    std::thread::spawn({
-        let _conn = conn.clone();
-        move || loop {
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-        }
-    });
 
     loop {
         event_queue.blocking_dispatch(&mut clock_widget).unwrap();

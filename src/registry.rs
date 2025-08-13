@@ -49,7 +49,7 @@ impl CompositorHandler for Widget {
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw_clock_with_theme::<CatppuccinMocha>(qh);
+        self.draw::<CatppuccinMocha>(qh);
     }
 
     fn surface_enter(
@@ -113,7 +113,8 @@ impl LayerShellHandler for Widget {
         _serial: u32,
     ) {
         // called once
-        self.draw_clock_with_theme::<CatppuccinMocha>(qh);
+        self.init::<CatppuccinMocha>();
+        self.draw::<CatppuccinMocha>(qh);
     }
 }
 
