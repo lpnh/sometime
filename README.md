@@ -1,3 +1,3 @@
-# nick
+# sometime
 
 a clock for niri

@@ -345,16 +345,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nick"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "env_logger",
- "smithay-client-toolkit",
- "wayland-client",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -566,6 +556,16 @@ dependencies = [
  "wayland-scanner",
  "xkbcommon",
  "xkeysym",
+]
+
+[[package]]
+name = "sometime"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "env_logger",
+ "smithay-client-toolkit",
+ "wayland-client",
 ]
 
 [[package]]

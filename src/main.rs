@@ -32,7 +32,8 @@ fn main() {
 
     let surface = compositor.create_surface(&qh);
 
-    let layer = layer_shell.create_layer_surface(&qh, surface, Layer::Overlay, Some("nick"), None);
+    let layer =
+        layer_shell.create_layer_surface(&qh, surface, Layer::Overlay, Some("sometime"), None);
 
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
     layer.set_size(SIDE as u32, SIDE as u32);
