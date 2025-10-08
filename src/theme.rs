@@ -13,16 +13,21 @@ impl AsRef<[u8]> for Bgra {
     }
 }
 
-pub trait Theme {
-    const FACE: Bgra;
-    const FRAME: Bgra;
-    const HANDS: Bgra;
+#[derive(Debug, Clone, Copy)]
+pub struct Theme {
+    pub background: Bgra,
+    pub frame: Bgra,
+    pub primary: Bgra,
+    pub secondary: Bgra,
 }
 
-pub struct CatppuccinMocha;
-
-impl Theme for CatppuccinMocha {
-    const FACE: Bgra = Bgra::from_rgba(30, 30, 46, 216); // Base
-    const FRAME: Bgra = Bgra::from_rgba(49, 50, 68, 208); // Surface0
-    const HANDS: Bgra = Bgra::from_rgba(203, 166, 247, 208); // Mauve
+impl Theme {
+    pub fn default() -> Self {
+        Self {
+            background: Bgra::from_rgba(30, 30, 46, 210),   // Base
+            frame: Bgra::from_rgba(49, 50, 68, 210),        // Surface0
+            primary: Bgra::from_rgba(203, 166, 247, 210),   // Mauve
+            secondary: Bgra::from_rgba(180, 190, 254, 210), // Lavender
+        }
+    }
 }

@@ -1,23 +1,31 @@
-use super::theme::Theme;
+use chrono::Datelike;
+use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 use std::f32::consts::PI;
-use std::marker::PhantomData;
 
-pub struct Canvas<T: Theme> {
+use super::theme::Theme;
+
+pub struct Canvas {
     pixel_data: Vec<u8>,
     side: i32,
     radius: f32,
-    _theme: PhantomData<T>,
+    theme: Theme,
+    face_cache: Vec<u8>,
+    font_system: FontSystem,
+    swash_cache: SwashCache,
 }
 
-impl<T: Theme> Canvas<T> {
-    pub fn new(side: i32) -> Self {
+impl Canvas {
+    pub fn new(side: i32, theme: Theme) -> Self {
         let pixel_data = vec![0u8; (side * side * 4) as usize];
 
         Self {
             pixel_data,
             side,
             radius: (side / 2) as f32,
-            _theme: PhantomData,
+            theme,
+            face_cache: Vec::new(),
+            font_system: FontSystem::new(),
+            swash_cache: SwashCache::new(),
         }
     }
 
@@ -30,19 +38,22 @@ impl<T: Theme> Canvas<T> {
                 if distance < 4.0 {
                     let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4].copy_from_slice(T::HANDS.as_ref());
+                        self.pixel_data[index..index + 4]
+                            .copy_from_slice(self.theme.primary.as_ref());
                     }
-                // Face
+                // Background
                 } else if distance <= self.radius - 2.0 {
                     let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4].copy_from_slice(T::FACE.as_ref());
+                        self.pixel_data[index..index + 4]
+                            .copy_from_slice(self.theme.background.as_ref());
                     }
                 // Frame
                 } else if distance <= self.radius {
                     let index = ((y * self.side + x) * 4) as usize;
                     if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4].copy_from_slice(T::FRAME.as_ref());
+                        self.pixel_data[index..index + 4]
+                            .copy_from_slice(self.theme.frame.as_ref());
                     }
                 }
             }
@@ -51,20 +62,29 @@ impl<T: Theme> Canvas<T> {
 
     pub fn draw_hour_hand(&mut self, hour: u32, minute: u32) {
         let angle = Self::hour_angle(hour, minute);
-        self.draw_thick_line_from_center(0.5, angle, 3);
+        let color = self.theme.primary;
+        self.draw_thick_line_from_center(0.5, angle, 3, color.as_ref());
     }
 
     pub fn draw_minute_hand(&mut self, minute: u32) {
         let angle = Self::minute_angle(minute);
-        self.draw_thick_line_from_center(0.8, angle, 2);
+        let color = self.theme.primary;
+        self.draw_thick_line_from_center(0.8, angle, 2, color.as_ref());
     }
 
     pub fn draw_second_hand(&mut self, second: u32) {
         let angle = Self::second_angle(second);
-        self.draw_thick_line_from_center(0.9, angle, 1);
+        let color = self.theme.secondary;
+        self.draw_thick_line_from_center(0.9, angle, 1, color.as_ref());
     }
 
-    pub fn draw_thick_line_from_center(&mut self, distance: f32, angle: f32, thickness: i32) {
+    pub fn draw_thick_line_from_center(
+        &mut self,
+        distance: f32,
+        angle: f32,
+        thickness: i32,
+        color: &[u8],
+    ) {
         let end_x = self.radius + (self.radius * distance) * angle.cos();
         let end_y = self.radius + (self.radius * distance) * angle.sin();
 
@@ -82,19 +102,34 @@ impl<T: Theme> Canvas<T> {
         let mut x = self.radius;
         let mut y = self.radius;
 
-        let half_thickness = thickness / 2;
+        let half_thickness = thickness as f32 / 2.0;
 
         for _ in 0..=steps {
-            for brush_dx in -half_thickness..=half_thickness {
-                for brush_dy in -half_thickness..=half_thickness {
-                    let px = (x + brush_dx as f32).round() as i32;
-                    let py = (y + brush_dy as f32).round() as i32;
+            let search_radius = (half_thickness + 2.0).ceil() as i32;
+            for dy_offset in -search_radius..=search_radius {
+                for dx_offset in -search_radius..=search_radius {
+                    let px = (x + dx_offset as f32).round() as i32;
+                    let py = (y + dy_offset as f32).round() as i32;
 
                     if px >= 0 && px < self.side && py >= 0 && py < self.side {
+                        let dist = ((px as f32 - x).powi(2) + (py as f32 - y).powi(2)).sqrt();
+
+                        // Fade out at the edges
+                        let alpha = if dist <= half_thickness - 1.0 {
+                            1.0
+                        } else if dist <= half_thickness + 1.0 {
+                            1.0 - (dist - (half_thickness - 1.0)) / 2.0
+                        } else {
+                            continue;
+                        };
+
                         let index = ((py * self.side + px) * 4) as usize;
-                        if index + 3 < self.pixel_data.len() {
-                            self.pixel_data[index..index + 4].copy_from_slice(T::HANDS.as_ref());
-                        }
+                        blend_pixel(
+                            &mut self.pixel_data,
+                            index,
+                            [color[0], color[1], color[2], 255],
+                            alpha,
+                        );
                     }
                 }
             }
@@ -103,9 +138,18 @@ impl<T: Theme> Canvas<T> {
         }
     }
 
-    pub fn copy_from_raw(&mut self, src: &[u8]) {
-        debug_assert_eq!(self.pixel_data.len(), src.len());
-        self.pixel_data.copy_from_slice(src);
+    pub fn cache_face(&mut self) {
+        self.draw_face();
+        self.face_cache = self.pixel_data.clone();
+    }
+
+    pub fn restore_face(&mut self) {
+        debug_assert_eq!(self.pixel_data.len(), self.face_cache.len());
+        self.pixel_data.copy_from_slice(&self.face_cache);
+    }
+
+    pub fn clear(&mut self) {
+        self.pixel_data.fill(0);
     }
 
     pub fn get_data(&self) -> &[u8] {
@@ -130,4 +174,224 @@ impl<T: Theme> Canvas<T> {
     fn second_angle(second: u32) -> f32 {
         second as f32 * PI / 30.0 - PI / 2.0
     }
+
+    pub fn draw_calendar_view(&mut self, year: i32, month: u32, today: u32) {
+        const CELL_WIDTH: i32 = 60;
+        const CELL_HEIGHT: i32 = 50;
+        const PADDING: i32 = 20;
+        const FRAME_THICKNESS: i32 = 2;
+
+        let primary_color = self
+            .theme
+            .primary
+            .as_ref()
+            .try_into()
+            .expect("invalid color");
+        let secondary_color = self
+            .theme
+            .secondary
+            .as_ref()
+            .try_into()
+            .expect("invalid color");
+
+        // Calculate grid dimensions
+        let first_of_month =
+            chrono::NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date: first of month");
+        let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
+        let days_in_month = Self::days_in_month(year, month);
+        let rows_needed = (start_weekday + days_in_month + 6) / 7;
+
+        let grid_width = 7 * CELL_WIDTH;
+        let grid_height = rows_needed * CELL_HEIGHT;
+
+        // Measure text heights
+        let month_name = first_of_month.format("%B").to_string();
+        let (_, month_height_f) = self.measure_text(&month_name, 32.0);
+        let (_, day_height_f) = self.measure_text("Sun", 16.0);
+
+        let month_height = month_height_f.ceil() as i32;
+        let day_height = day_height_f.ceil() as i32;
+
+        // Calculate total dimensions
+        let content_height = month_height + PADDING + day_height + grid_height;
+        let rect_width = grid_width + 2 * PADDING + 2 * FRAME_THICKNESS;
+        let rect_height = content_height + 2 * PADDING + 2 * FRAME_THICKNESS;
+
+        // Center on canvas
+        let rect_x = (self.side - rect_width) / 2;
+        let rect_y = (self.side - rect_height) / 2;
+
+        self.draw_calendar_bg(rect_x, rect_y, rect_width, rect_height, FRAME_THICKNESS);
+
+        // Content area
+        let content_x = rect_x + FRAME_THICKNESS + PADDING;
+        let mut y = rect_y + FRAME_THICKNESS + PADDING;
+
+        // Draw month name (centered)
+        let (month_w, _) = self.measure_text(&month_name, 32.0);
+        let month_x = self.center_text_x(content_x, grid_width, month_w);
+        self.draw_text(&month_name, month_x, y, 32.0, primary_color);
+        y += month_height + PADDING;
+
+        // Draw weekday headers
+        let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        for (i, day) in weekdays.iter().enumerate() {
+            let (day_w, _) = self.measure_text(day, 16.0);
+            let day_x = self.center_text_x(content_x + (i as i32 * CELL_WIDTH), CELL_WIDTH, day_w);
+            self.draw_text(day, day_x, y, 16.0, primary_color);
+        }
+        y += day_height;
+
+        // Draw calendar grid
+        for day in 1..=days_in_month {
+            let day_pos = start_weekday + day - 1;
+            let row = day_pos / 7;
+            let col = day_pos % 7;
+            let is_today = day == today as i32;
+
+            let (font_size, day_color) = if is_today {
+                (28.0, secondary_color)
+            } else {
+                (24.0, primary_color)
+            };
+
+            let day_str = day.to_string();
+            let (text_w, text_h) = self.measure_text(&day_str, font_size);
+
+            let cell_x = content_x + (col * CELL_WIDTH);
+            let cell_y = y + (row * CELL_HEIGHT);
+            let text_x = cell_x + (CELL_WIDTH - text_w.ceil() as i32) / 2;
+            let text_y = cell_y + (CELL_HEIGHT - text_h.ceil() as i32) / 2;
+
+            self.draw_text(&day_str, text_x, text_y, font_size, day_color);
+        }
+    }
+
+    pub fn draw_calendar_bg(
+        &mut self,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        frame_thickness: i32,
+    ) {
+        for py in y..(y + height).min(self.side) {
+            for px in x..(x + width).min(self.side) {
+                if px < 0 || py < 0 || px >= self.side || py >= self.side {
+                    continue;
+                }
+
+                let index = ((py * self.side + px) * 4) as usize;
+                if index + 3 >= self.pixel_data.len() {
+                    continue;
+                }
+
+                let is_frame = px < x + frame_thickness
+                    || px >= x + width - frame_thickness
+                    || py < y + frame_thickness
+                    || py >= y + height - frame_thickness;
+
+                let color = if is_frame {
+                    self.theme.frame.as_ref()
+                } else {
+                    self.theme.background.as_ref()
+                };
+
+                self.pixel_data[index..index + 4].copy_from_slice(color);
+            }
+        }
+    }
+
+    pub fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, color: [u8; 4]) {
+        let buffer = self.create_text_buffer(text, font_size);
+
+        // Convert BGRA to RGBA
+        let text_color = Color::rgba(color[2], color[1], color[0], color[3]);
+
+        // Capture needed fields to avoid borrow issues
+        let side = self.side;
+        let pixel_data = &mut self.pixel_data;
+
+        buffer.draw(
+            &mut self.font_system,
+            &mut self.swash_cache,
+            text_color,
+            |gx, gy, _w, _h, glyph_color| {
+                let px = x + gx;
+                let py = y + gy;
+
+                if px >= 0 && px < side && py >= 0 && py < side {
+                    let index = ((py * side + px) * 4) as usize;
+                    let alpha = glyph_color.a() as f32 / 255.0;
+                    let color_bgra = [
+                        glyph_color.b(),
+                        glyph_color.g(),
+                        glyph_color.r(),
+                        glyph_color.a(),
+                    ];
+                    blend_pixel(pixel_data, index, color_bgra, alpha);
+                }
+            },
+        );
+    }
+
+    fn create_text_buffer(&mut self, text: &str, font_size: f32) -> Buffer {
+        let metrics = Metrics::new(font_size, font_size * 1.2);
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+        buffer.set_size(
+            &mut self.font_system,
+            Some(self.side as f32),
+            Some(self.side as f32),
+        );
+        buffer.set_text(
+            &mut self.font_system,
+            text,
+            &Attrs::new(),
+            Shaping::Advanced,
+        );
+        buffer.shape_until_scroll(&mut self.font_system, false);
+        buffer
+    }
+
+    pub fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
+        let buffer = self.create_text_buffer(text, font_size);
+
+        let width = buffer
+            .layout_runs()
+            .next()
+            .map(|run| run.line_w)
+            .unwrap_or(0.0);
+
+        let height = font_size * 1.2;
+
+        (width, height)
+    }
+
+    fn center_text_x(&self, container_x: i32, container_width: i32, text_width: f32) -> i32 {
+        container_x + (container_width - text_width.ceil() as i32) / 2
+    }
+
+    fn days_in_month(year: i32, month: u32) -> i32 {
+        let (ny, nm) = if month == 12 {
+            (year + 1, 1)
+        } else {
+            (year, month + 1)
+        };
+        let next_month = chrono::NaiveDate::from_ymd_opt(ny, nm, 1)
+            .expect("days_in_month: invalid next month date");
+        let last = next_month - chrono::Duration::days(1);
+        last.day() as i32
+    }
+}
+
+fn blend_pixel(pixel_data: &mut [u8], index: usize, color: [u8; 4], alpha: f32) {
+    if index + 3 >= pixel_data.len() {
+        return;
+    }
+    let inv_alpha = 1.0 - alpha;
+    pixel_data[index] = (color[0] as f32 * alpha + pixel_data[index] as f32 * inv_alpha) as u8;
+    pixel_data[index + 1] =
+        (color[1] as f32 * alpha + pixel_data[index + 1] as f32 * inv_alpha) as u8;
+    pixel_data[index + 2] =
+        (color[2] as f32 * alpha + pixel_data[index + 2] as f32 * inv_alpha) as u8;
 }

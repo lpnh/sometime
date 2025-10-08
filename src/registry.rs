@@ -21,9 +21,9 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_surface},
 };
 
-use super::{Widget, theme::CatppuccinMocha};
+use super::sometime::Sometime;
 
-impl CompositorHandler for Widget {
+impl CompositorHandler for Sometime {
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -49,7 +49,7 @@ impl CompositorHandler for Widget {
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw::<CatppuccinMocha>(qh);
+        self.draw(qh);
     }
 
     fn surface_enter(
@@ -71,9 +71,9 @@ impl CompositorHandler for Widget {
     }
 }
 
-impl OutputHandler for Widget {
+impl OutputHandler for Sometime {
     fn output_state(&mut self) -> &mut OutputState {
-        &mut self.output_state
+        &mut self.widget.output_state
     }
 
     fn new_output(
@@ -99,9 +99,9 @@ impl OutputHandler for Widget {
     }
 }
 
-impl LayerShellHandler for Widget {
+impl LayerShellHandler for Sometime {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
-        self.exit = true;
+        self.widget.exit = true;
     }
 
     fn configure(
@@ -113,14 +113,14 @@ impl LayerShellHandler for Widget {
         _serial: u32,
     ) {
         // called once
-        self.init::<CatppuccinMocha>();
-        self.draw::<CatppuccinMocha>(qh);
+        self.init();
+        self.draw(qh);
     }
 }
 
-impl SeatHandler for Widget {
+impl SeatHandler for Sometime {
     fn seat_state(&mut self) -> &mut SeatState {
-        &mut self.seat_state
+        &mut self.widget.seat_state
     }
 
     fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
@@ -132,20 +132,22 @@ impl SeatHandler for Widget {
         seat: wl_seat::WlSeat,
         capability: Capability,
     ) {
-        if capability == Capability::Keyboard && self.keyboard.is_none() {
+        if capability == Capability::Keyboard && self.widget.keyboard.is_none() {
             let keyboard = self
+                .widget
                 .seat_state
                 .get_keyboard(qh, &seat, None)
                 .expect("Failed to create keyboard");
-            self.keyboard = Some(keyboard);
+            self.widget.keyboard = Some(keyboard);
         }
 
         if capability == Capability::Pointer {
             let pointer = self
+                .widget
                 .seat_state
                 .get_pointer(qh, &seat)
                 .expect("Failed to create pointer");
-            self.pointer = Some(pointer);
+            self.widget.pointer = Some(pointer);
         }
     }
 
@@ -156,32 +158,29 @@ impl SeatHandler for Widget {
         _: wl_seat::WlSeat,
         capability: Capability,
     ) {
-        if capability == Capability::Keyboard && self.keyboard.is_some() {
-            self.keyboard.take().unwrap().release();
+        if capability == Capability::Keyboard && self.widget.keyboard.is_some() {
+            self.widget.keyboard.take().unwrap().release();
         }
 
-        if capability == Capability::Pointer && self.pointer.is_some() {
-            self.pointer.take().unwrap().release();
+        if capability == Capability::Pointer && self.widget.pointer.is_some() {
+            self.widget.pointer.take().unwrap().release();
         }
     }
 
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-impl KeyboardHandler for Widget {
+impl KeyboardHandler for Sometime {
     fn enter(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
-        surface: &wl_surface::WlSurface,
+        _: &wl_surface::WlSurface,
         _: u32,
         _: &[u32],
-        _keysyms: &[Keysym],
+        _: &[Keysym],
     ) {
-        if self.layer.wl_surface() == surface {
-            self.keyboard_focus = true;
-        }
     }
 
     fn leave(
@@ -192,20 +191,27 @@ impl KeyboardHandler for Widget {
         surface: &wl_surface::WlSurface,
         _: u32,
     ) {
-        if self.layer.wl_surface() == surface {
-            self.exit = true;
+        if self.widget.layer.wl_surface() == surface {
+            self.widget.exit = true;
         }
     }
 
     fn press_key(
         &mut self,
         _conn: &Connection,
-        _: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
-        _event: KeyEvent,
+        event: KeyEvent,
     ) {
-        self.exit = true;
+        // Toggle between clock and calendar with Tab or Space
+        if event.keysym == Keysym::Tab || event.keysym == Keysym::space {
+            self.toggle_view();
+            self.draw(qh);
+        } else {
+            // For convenience, any other key exits
+            self.widget.exit = true;
+        }
     }
 
     fn repeat_key(
@@ -241,7 +247,7 @@ impl KeyboardHandler for Widget {
     }
 }
 
-impl PointerHandler for Widget {
+impl PointerHandler for Sometime {
     fn pointer_frame(
         &mut self,
         _conn: &Connection,
@@ -251,37 +257,37 @@ impl PointerHandler for Widget {
     ) {
         for event in events {
             // Ignore events for other surfaces
-            if &event.surface != self.layer.wl_surface() {
+            if &event.surface != self.widget.layer.wl_surface() {
                 continue;
             }
             if let PointerEventKind::Enter { serial, .. } = event.kind {
                 pointer.set_cursor(serial, None, 0, 0);
             } else {
-                self.exit = true;
+                self.widget.exit = true;
             }
         }
     }
 }
 
-impl ShmHandler for Widget {
+impl ShmHandler for Sometime {
     fn shm_state(&mut self) -> &mut Shm {
-        &mut self.shm
+        &mut self.widget.shm
     }
 }
 
 // Delegate implementations
-delegate_compositor!(Widget);
-delegate_output!(Widget);
-delegate_shm!(Widget);
-delegate_seat!(Widget);
-delegate_keyboard!(Widget);
-delegate_pointer!(Widget);
-delegate_layer!(Widget);
-delegate_registry!(Widget);
+delegate_compositor!(Sometime);
+delegate_output!(Sometime);
+delegate_shm!(Sometime);
+delegate_seat!(Sometime);
+delegate_keyboard!(Sometime);
+delegate_pointer!(Sometime);
+delegate_layer!(Sometime);
+delegate_registry!(Sometime);
 
-impl ProvidesRegistryState for Widget {
+impl ProvidesRegistryState for Sometime {
     fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
+        &mut self.widget.registry_state
     }
     registry_handlers![OutputState, SeatState];
 }

@@ -1,6 +1,10 @@
 mod canvas;
+use canvas::Canvas;
 mod registry;
+mod sometime;
+use sometime::Sometime;
 mod theme;
+use theme::Theme;
 mod widget;
 use widget::Widget;
 
@@ -34,15 +38,13 @@ fn main() {
 
     let layer =
         layer_shell.create_layer_surface(&qh, surface, Layer::Overlay, Some("sometime"), None);
-
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
     layer.set_size(SIDE as u32, SIDE as u32);
-
     layer.commit();
 
     let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
 
-    let mut clock_widget = Widget {
+    let widget = Widget {
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
@@ -52,17 +54,16 @@ fn main() {
         side: SIDE,
         layer,
         keyboard: None,
-        keyboard_focus: false,
         pointer: None,
-        last_second: u32::MAX,
-        face_cache: Vec::new(),
     };
+    let canvas = Canvas::new(SIDE, Theme::default());
+    let mut sometime = Sometime::new(widget, canvas);
 
     loop {
-        event_queue.blocking_dispatch(&mut clock_widget).unwrap();
+        event_queue.blocking_dispatch(&mut sometime).unwrap();
 
-        if clock_widget.exit {
-            println!("Exiting clock widget");
+        if sometime.widget.exit {
+            println!("Exiting sometime");
             break;
         }
     }
