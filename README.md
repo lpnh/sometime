@@ -1,3 +1,3 @@
 # sometime
 
-a clock for niri
+a clock and calendar widget for niri
