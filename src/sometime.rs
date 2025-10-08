@@ -83,7 +83,7 @@ impl Sometime {
         self.canvas.draw_second_hand(now.second());
 
         let data = self.canvas.get_data();
-        let side = self.widget.side;
+        let side = self.canvas.side;
         let stride = side * 4;
 
         let (buffer, surface) = self
@@ -114,7 +114,7 @@ impl Sometime {
             .draw_calendar_view(now.year(), now.month(), now.day());
 
         let data = self.canvas.get_data();
-        let side = self.widget.side;
+        let side = self.canvas.side;
         let stride = side * 4;
 
         let (buffer, surface) = self

@@ -14,7 +14,6 @@ pub struct Widget {
     pub shm: Shm,
     pub exit: bool,
     pub pool: SlotPool,
-    pub side: i32,
     pub layer: LayerSurface,
     pub keyboard: Option<wl_keyboard::WlKeyboard>,
     pub pointer: Option<wl_pointer::WlPointer>,

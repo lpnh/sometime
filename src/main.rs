@@ -51,7 +51,6 @@ fn main() {
         shm,
         exit: false,
         pool,
-        side: SIDE,
         layer,
         keyboard: None,
         pointer: None,

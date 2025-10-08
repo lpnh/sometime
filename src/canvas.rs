@@ -5,8 +5,8 @@ use std::f32::consts::PI;
 use super::theme::Theme;
 
 pub struct Canvas {
+    pub side: i32,
     pixel_data: Vec<u8>,
-    side: i32,
     radius: f32,
     theme: Theme,
     face_cache: Vec<u8>,
