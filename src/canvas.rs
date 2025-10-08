@@ -176,11 +176,6 @@ impl Canvas {
     }
 
     pub fn draw_calendar_view(&mut self, year: i32, month: u32, today: u32) {
-        const CELL_WIDTH: i32 = 60;
-        const CELL_HEIGHT: i32 = 50;
-        const PADDING: i32 = 20;
-        const FRAME_THICKNESS: i32 = 2;
-
         let primary_color = self
             .theme
             .primary
@@ -201,69 +196,85 @@ impl Canvas {
         let days_in_month = Self::days_in_month(year, month);
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
 
-        let grid_width = 7 * CELL_WIDTH;
-        let grid_height = rows_needed * CELL_HEIGHT;
+        // Base spacing
+        let padding = (self.side as f32 / 32.0).ceil() as i32;
+        let frame_thickness = 2;
 
-        // Measure text heights
+        // Grid layout with 7 columns
+        let available_width = self.side - 2 * padding;
+        let cell_width = available_width / 7;
+        let grid_width = cell_width * 7;
+        let cell_height = (cell_width as f32 * 0.7).ceil() as i32;
+
+        // Font sizes
+        let month_font_size = (cell_width as f32 * 0.5).ceil();
+        let weekday_font_size = (cell_width as f32 * 0.4).ceil();
+        let day_font_size = (cell_width as f32 * 0.5).ceil();
+
+        // Measure vertical spacing needs
         let month_name = first_of_month.format("%B").to_string();
-        let (_, month_height_f) = self.measure_text(&month_name, 32.0);
-        let (_, day_height_f) = self.measure_text("Sun", 16.0);
+        let month_height = self.measure_text(&month_name, month_font_size).1.ceil() as i32;
 
-        let month_height = month_height_f.ceil() as i32;
-        let day_height = day_height_f.ceil() as i32;
-
-        // Calculate total dimensions
-        let content_height = month_height + PADDING + day_height + grid_height;
-        let rect_width = grid_width + 2 * PADDING + 2 * FRAME_THICKNESS;
-        let rect_height = content_height + 2 * PADDING + 2 * FRAME_THICKNESS;
+        // Calendar grid + left/right padding
+        let total_width = grid_width + 2 * padding;
+        // (top/bottom padding + spacing) + month header + weekday headers + calendar grid
+        let total_height = padding * 3 + month_height + cell_height + rows_needed * cell_height;
 
         // Center on canvas
-        let rect_x = (self.side - rect_width) / 2;
-        let rect_y = (self.side - rect_height) / 2;
+        let rect_x = (self.side - total_width) / 2;
+        let rect_y = (self.side - total_height) / 2;
 
-        self.draw_calendar_bg(rect_x, rect_y, rect_width, rect_height, FRAME_THICKNESS);
+        // Draw background frame
+        self.draw_calendar_bg(rect_x, rect_y, total_width, total_height, frame_thickness);
 
-        // Content area
-        let content_x = rect_x + FRAME_THICKNESS + PADDING;
-        let mut y = rect_y + FRAME_THICKNESS + PADDING;
+        // Draw content relative to top-left, with padding
+        let mut content_y = rect_y + padding;
 
-        // Draw month name (centered)
-        let (month_w, _) = self.measure_text(&month_name, 32.0);
-        let month_x = self.center_text_x(content_x, grid_width, month_w);
-        self.draw_text(&month_name, month_x, y, 32.0, primary_color);
-        y += month_height + PADDING;
+        // Month name
+        let (month_w, _) = self.measure_text(&month_name, month_font_size);
+        let month_x = rect_x + (total_width - month_w.ceil() as i32) / 2;
+        self.draw_text(
+            &month_name,
+            month_x,
+            content_y,
+            month_font_size,
+            primary_color,
+        );
+        content_y += month_height + padding;
 
-        // Draw weekday headers
+        // Weekday headers
         let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        let day_header_height = self.measure_text("Sun", weekday_font_size).1.ceil() as i32;
         for (i, day) in weekdays.iter().enumerate() {
-            let (day_w, _) = self.measure_text(day, 16.0);
-            let day_x = self.center_text_x(content_x + (i as i32 * CELL_WIDTH), CELL_WIDTH, day_w);
-            self.draw_text(day, day_x, y, 16.0, primary_color);
+            let (day_w, _) = self.measure_text(day, weekday_font_size);
+            let day_x =
+                rect_x + padding + i as i32 * cell_width + (cell_width - day_w.ceil() as i32) / 2;
+            let day_y = content_y + (cell_height - day_header_height) / 2;
+            self.draw_text(day, day_x, day_y, weekday_font_size, primary_color);
         }
-        y += day_height;
+        content_y += cell_height;
 
-        // Draw calendar grid
+        // Calendar grid
         for day in 1..=days_in_month {
             let day_pos = start_weekday + day - 1;
             let row = day_pos / 7;
             let col = day_pos % 7;
             let is_today = day == today as i32;
 
-            let (font_size, day_color) = if is_today {
-                (28.0, secondary_color)
+            let day_color = if is_today {
+                secondary_color
             } else {
-                (24.0, primary_color)
+                primary_color
             };
 
             let day_str = day.to_string();
-            let (text_w, text_h) = self.measure_text(&day_str, font_size);
+            let (text_w, text_h) = self.measure_text(&day_str, day_font_size);
 
-            let cell_x = content_x + (col * CELL_WIDTH);
-            let cell_y = y + (row * CELL_HEIGHT);
-            let text_x = cell_x + (CELL_WIDTH - text_w.ceil() as i32) / 2;
-            let text_y = cell_y + (CELL_HEIGHT - text_h.ceil() as i32) / 2;
+            let text_x =
+                rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
+            let text_y = content_y + row * cell_height + (cell_height - text_h.ceil() as i32) / 2;
 
-            self.draw_text(&day_str, text_x, text_y, font_size, day_color);
+            self.draw_text(&day_str, text_x, text_y, day_font_size, day_color);
         }
     }
 
@@ -365,10 +376,6 @@ impl Canvas {
         let height = font_size * 1.2;
 
         (width, height)
-    }
-
-    fn center_text_x(&self, container_x: i32, container_width: i32, text_width: f32) -> i32 {
-        container_x + (container_width - text_width.ceil() as i32) / 2
     }
 
     fn days_in_month(year: i32, month: u32) -> i32 {
