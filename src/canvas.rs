@@ -250,7 +250,7 @@ impl Canvas {
             let day_x =
                 rect_x + padding + i as i32 * cell_width + (cell_width - day_w.ceil() as i32) / 2;
             let day_y = content_y + (cell_height - day_header_height) / 2;
-            self.draw_text(day, day_x, day_y, weekday_font_size, primary_color);
+            self.draw_text(day, day_x, day_y, weekday_font_size, secondary_color);
         }
         content_y += cell_height;
 
@@ -259,13 +259,6 @@ impl Canvas {
             let day_pos = start_weekday + day - 1;
             let row = day_pos / 7;
             let col = day_pos % 7;
-            let is_today = day == today as i32;
-
-            let day_color = if is_today {
-                secondary_color
-            } else {
-                primary_color
-            };
 
             let day_str = day.to_string();
             let (text_w, text_h) = self.measure_text(&day_str, day_font_size);
@@ -274,7 +267,26 @@ impl Canvas {
                 rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
             let text_y = content_y + row * cell_height + (cell_height - text_h.ceil() as i32) / 2;
 
-            self.draw_text(&day_str, text_x, text_y, day_font_size, day_color);
+            let is_today = day == today as i32;
+            if is_today {
+                // Draw background rectangle for today
+                let margin = 4;
+                let cell_x = rect_x + padding + col * cell_width + margin;
+                let cell_y = content_y + row * cell_height;
+
+                for py in cell_y..(cell_y + cell_height).min(self.side) {
+                    for px in cell_x..(cell_x + cell_width - 2 * margin).min(self.side) {
+                        if px >= 0 && py >= 0 && px < self.side && py < self.side {
+                            let index = ((py * self.side + px) * 4) as usize;
+                            if index + 3 < self.pixel_data.len() {
+                                self.pixel_data[index..index + 4]
+                                    .copy_from_slice(self.theme.frame.as_ref());
+                            }
+                        }
+                    }
+                }
+            }
+            self.draw_text(&day_str, text_x, text_y, day_font_size, primary_color);
         }
     }
 
