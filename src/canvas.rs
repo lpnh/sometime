@@ -30,6 +30,10 @@ impl Canvas {
     }
 
     pub fn draw_face(&mut self) {
+        let radius_sq = self.radius * self.radius;
+        let bg_radius = self.radius - 2.0;
+        let bg_radius_sq = bg_radius * bg_radius;
+
         for y in 0..self.side {
             for x in 0..self.side {
                 let index = self.pixel_index(x, y);
@@ -37,16 +41,16 @@ impl Canvas {
                     continue;
                 }
 
-                let distance = self.distance_to((x, y));
+                let center_dist_sq = self.center_distance_squared((x, y));
 
                 // Center dot
-                let color = if distance < 4.0 {
+                let color = if center_dist_sq < 16.0 {
                     self.theme.primary.as_ref()
                 // Background
-                } else if distance <= self.radius - 2.0 {
+                } else if center_dist_sq <= bg_radius_sq {
                     self.theme.background.as_ref()
                 // Frame
-                } else if distance <= self.radius {
+                } else if center_dist_sq <= radius_sq {
                     self.theme.frame.as_ref()
                 } else {
                     continue; // Outside circle
@@ -101,6 +105,10 @@ impl Canvas {
 
         let half_thickness = thickness as f32 / 2.0;
         let search_radius = (half_thickness + 2.0).ceil() as i32;
+        let inner_radius = half_thickness - 1.0;
+        let outer_radius = half_thickness + 1.0;
+        let inner_radius_sq = inner_radius * inner_radius;
+        let outer_radius_sq = outer_radius * outer_radius;
 
         for _ in 0..=steps {
             for dy_offset in -search_radius..=search_radius {
@@ -109,13 +117,13 @@ impl Canvas {
                     let py = (y + dy_offset as f32).round() as i32;
 
                     if px >= 0 && px < self.side && py >= 0 && py < self.side {
-                        let dist = ((px as f32 - x).powi(2) + (py as f32 - y).powi(2)).sqrt();
+                        let squared_dist = Self::squared_distance(x, y, px as f32, py as f32);
 
                         // Fade out at the edges
-                        let alpha = if dist <= half_thickness - 1.0 {
+                        let alpha = if squared_dist <= inner_radius_sq {
                             1.0
-                        } else if dist <= half_thickness + 1.0 {
-                            1.0 - (dist - (half_thickness - 1.0)) / 2.0
+                        } else if squared_dist <= outer_radius_sq {
+                            (outer_radius - squared_dist.sqrt()) / 2.0
                         } else {
                             continue;
                         };
@@ -163,10 +171,16 @@ impl Canvas {
         ((y * side + x) * 4) as usize
     }
 
-    fn distance_to(&self, other: (i32, i32)) -> f32 {
-        let dx = self.radius - other.0 as f32;
-        let dy = self.radius - other.1 as f32;
-        (dx * dx + dy * dy).sqrt()
+    #[inline]
+    fn squared_distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        dx * dx + dy * dy
+    }
+
+    #[inline]
+    fn center_distance_squared(&self, other: (i32, i32)) -> f32 {
+        Self::squared_distance(self.radius, self.radius, other.0 as f32, other.1 as f32)
     }
 
     // Functions to handle clock angles
