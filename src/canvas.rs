@@ -211,14 +211,13 @@ impl Canvas {
         let weekday_font_size = (cell_width as f32 * 0.4).ceil();
         let day_font_size = (cell_width as f32 * 0.5).ceil();
 
-        // Measure vertical spacing needs
-        let month_name = first_of_month.format("%B").to_string();
-        let month_height = self.measure_text(&month_name, month_font_size).1.ceil() as i32;
+        let month_header = first_of_month.format("%B %Y").to_string();
+        let month_height = self.measure_text(&month_header, month_font_size).1.ceil() as i32;
 
         // Calendar grid + left/right padding
         let total_width = grid_width + 2 * padding;
         // (top/bottom padding + spacing) + month header + weekday headers + calendar grid
-        let total_height = padding * 3 + month_height + cell_height + rows_needed * cell_height;
+        let total_height = 3 * padding + month_height + cell_height + rows_needed * cell_height;
 
         // Center on canvas
         let rect_x = (self.side - total_width) / 2;
@@ -231,10 +230,10 @@ impl Canvas {
         let mut content_y = rect_y + padding;
 
         // Month name
-        let (month_w, _) = self.measure_text(&month_name, month_font_size);
+        let (month_w, _) = self.measure_text(&month_header, month_font_size);
         let month_x = rect_x + (total_width - month_w.ceil() as i32) / 2;
         self.draw_text(
-            &month_name,
+            &month_header,
             month_x,
             content_y,
             month_font_size,
