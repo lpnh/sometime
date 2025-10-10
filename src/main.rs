@@ -61,7 +61,6 @@ fn main() {
         pool,
         layer,
         keyboard: None,
-        pointer: None,
     };
     let canvas = Canvas::new(SIDE, Theme::default());
     let mut sometime = Sometime::new(widget, canvas);

@@ -1,14 +1,13 @@
 use smithay_client_toolkit::{
     compositor::CompositorHandler,
-    delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_pointer,
-    delegate_registry, delegate_seat, delegate_shm,
+    delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_registry,
+    delegate_seat, delegate_shm,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         Capability, SeatHandler, SeatState,
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
-        pointer::{PointerEvent, PointerEventKind, PointerHandler},
     },
     shell::{
         WaylandSurface,
@@ -18,7 +17,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     Connection, QueueHandle,
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_surface},
+    protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
 };
 
 use super::sometime::Sometime;
@@ -140,15 +139,6 @@ impl SeatHandler for Sometime {
                 .expect("Failed to create keyboard");
             self.widget.keyboard = Some(keyboard);
         }
-
-        if capability == Capability::Pointer {
-            let pointer = self
-                .widget
-                .seat_state
-                .get_pointer(qh, &seat)
-                .expect("Failed to create pointer");
-            self.widget.pointer = Some(pointer);
-        }
     }
 
     fn remove_capability(
@@ -160,10 +150,6 @@ impl SeatHandler for Sometime {
     ) {
         if capability == Capability::Keyboard && self.widget.keyboard.is_some() {
             self.widget.keyboard.take().unwrap().release();
-        }
-
-        if capability == Capability::Pointer && self.widget.pointer.is_some() {
-            self.widget.pointer.take().unwrap().release();
         }
     }
 
@@ -247,28 +233,6 @@ impl KeyboardHandler for Sometime {
     }
 }
 
-impl PointerHandler for Sometime {
-    fn pointer_frame(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        pointer: &wl_pointer::WlPointer,
-        events: &[PointerEvent],
-    ) {
-        for event in events {
-            // Ignore events for other surfaces
-            if &event.surface != self.widget.layer.wl_surface() {
-                continue;
-            }
-            if let PointerEventKind::Enter { serial, .. } = event.kind {
-                pointer.set_cursor(serial, None, 0, 0);
-            } else {
-                self.widget.exit = true;
-            }
-        }
-    }
-}
-
 impl ShmHandler for Sometime {
     fn shm_state(&mut self) -> &mut Shm {
         &mut self.widget.shm
@@ -281,7 +245,6 @@ delegate_output!(Sometime);
 delegate_shm!(Sometime);
 delegate_seat!(Sometime);
 delegate_keyboard!(Sometime);
-delegate_pointer!(Sometime);
 delegate_layer!(Sometime);
 delegate_registry!(Sometime);
 

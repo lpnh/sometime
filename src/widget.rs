@@ -5,7 +5,7 @@ use smithay_client_toolkit::{
     shell::wlr_layer::LayerSurface,
     shm::{Shm, slot::SlotPool},
 };
-use wayland_client::protocol::{wl_keyboard, wl_pointer};
+use wayland_client::protocol::wl_keyboard;
 
 pub struct Widget {
     pub registry_state: RegistryState,
@@ -16,5 +16,4 @@ pub struct Widget {
     pub pool: SlotPool,
     pub layer: LayerSurface,
     pub keyboard: Option<wl_keyboard::WlKeyboard>,
-    pub pointer: Option<wl_pointer::WlPointer>,
 }
