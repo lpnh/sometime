@@ -81,38 +81,17 @@ impl Sometime {
         self.canvas.draw_hour_hand(now.hour(), now.minute());
         self.canvas.draw_minute_hand(now.minute());
         self.canvas.draw_second_hand(now.second());
-
-        let data = self.canvas.get_data();
-        let side = self.canvas.side;
-        let stride = side * 4;
-
-        let (buffer, surface) = self
-            .widget
-            .pool
-            .create_buffer(side, side, stride, Argb8888)
-            .expect("create buffer");
-
-        surface.copy_from_slice(data);
-
-        self.widget
-            .layer
-            .wl_surface()
-            .damage_buffer(0, 0, side, side);
-        self.widget
-            .layer
-            .wl_surface()
-            .frame(qh, self.widget.layer.wl_surface().clone());
-        buffer
-            .attach_to(self.widget.layer.wl_surface())
-            .expect("buffer attach");
-        self.widget.layer.commit();
+        self.update_surface(qh);
     }
 
     fn draw_calendar(&mut self, qh: &QueueHandle<Self>, now: DateTime<Local>) {
         self.canvas.clear();
         self.canvas
             .draw_calendar_view(now.year(), now.month(), now.day());
+        self.update_surface(qh);
+    }
 
+    fn update_surface(&mut self, qh: &QueueHandle<Self>) {
         let data = self.canvas.get_data();
         let side = self.canvas.side;
         let stride = side * 4;
@@ -125,17 +104,10 @@ impl Sometime {
 
         surface.copy_from_slice(data);
 
-        self.widget
-            .layer
-            .wl_surface()
-            .damage_buffer(0, 0, side, side);
-        self.widget
-            .layer
-            .wl_surface()
-            .frame(qh, self.widget.layer.wl_surface().clone());
-        buffer
-            .attach_to(self.widget.layer.wl_surface())
-            .expect("buffer attach");
+        let wl_surface = self.widget.layer.wl_surface();
+        wl_surface.damage_buffer(0, 0, side, side);
+        wl_surface.frame(qh, wl_surface.clone());
+        buffer.attach_to(wl_surface).expect("buffer attach");
         self.widget.layer.commit();
     }
 }
