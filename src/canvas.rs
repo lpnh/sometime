@@ -212,7 +212,7 @@ impl Canvas {
         let day_font_size = (cell_width as f32 * 0.5).ceil();
 
         let month_header = first_of_month.format("%B %Y").to_string();
-        let month_height = self.measure_text(&month_header, month_font_size).1.ceil() as i32;
+        let month_height = Self::measure_text_height(month_font_size).ceil() as i32;
 
         // Calendar grid + left/right padding
         let total_width = grid_width + 2 * padding;
@@ -230,7 +230,7 @@ impl Canvas {
         let mut content_y = rect_y + padding;
 
         // Month name
-        let (month_w, _) = self.measure_text(&month_header, month_font_size);
+        let month_w = self.measure_text_width(&month_header, month_font_size);
         let month_x = rect_x + (total_width - month_w.ceil() as i32) / 2;
         self.draw_text(
             &month_header,
@@ -243,9 +243,9 @@ impl Canvas {
 
         // Weekday headers
         let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        let day_header_height = self.measure_text("Sun", weekday_font_size).1.ceil() as i32;
+        let day_header_height = Self::measure_text_height(weekday_font_size).ceil() as i32;
         for (i, day) in weekdays.iter().enumerate() {
-            let (day_w, _) = self.measure_text(day, weekday_font_size);
+            let day_w = self.measure_text_width(day, weekday_font_size);
             let day_x =
                 rect_x + padding + i as i32 * cell_width + (cell_width - day_w.ceil() as i32) / 2;
             let day_y = content_y + (cell_height - day_header_height) / 2;
@@ -325,7 +325,7 @@ impl Canvas {
     }
 
     pub fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, color: [u8; 4]) {
-        let buffer = self.create_text_buffer(text, font_size);
+        let buffer = self.create_drawing_buffer(text, font_size);
 
         // Convert BGRA to RGBA
         let text_color = Color::rgba(color[2], color[1], color[0], color[3]);
@@ -357,7 +357,7 @@ impl Canvas {
         );
     }
 
-    fn create_text_buffer(&mut self, text: &str, font_size: f32) -> Buffer {
+    fn create_drawing_buffer(&mut self, text: &str, font_size: f32) -> Buffer {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         buffer.set_size(
@@ -375,18 +375,34 @@ impl Canvas {
         buffer
     }
 
-    pub fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
-        let buffer = self.create_text_buffer(text, font_size);
+    fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
+        let width = self.measure_text_width(text, font_size);
+        let height = Self::measure_text_height(font_size);
+        (width, height)
+    }
 
-        let width = buffer
+    fn measure_text_width(&mut self, text: &str, font_size: f32) -> f32 {
+        let metrics = Metrics::new(font_size, font_size * 1.2);
+        let mut buffer = Buffer::new(&mut self.font_system, metrics);
+
+        buffer.set_text(
+            &mut self.font_system,
+            text,
+            &Attrs::new(),
+            Shaping::Advanced,
+        );
+        buffer.shape_until_scroll(&mut self.font_system, false);
+
+        buffer
             .layout_runs()
             .next()
             .map(|run| run.line_w)
-            .unwrap_or(0.0);
+            .unwrap_or(0.0)
+    }
 
-        let height = font_size * 1.2;
-
-        (width, height)
+    fn measure_text_height(font_size: f32) -> f32 {
+        let metrics = Metrics::new(font_size, font_size * 1.2);
+        metrics.line_height
     }
 
     fn days_in_month(year: i32, month: u32) -> i32 {
