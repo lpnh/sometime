@@ -8,9 +8,17 @@ use theme::Theme;
 mod widget;
 use widget::Widget;
 
+use chrono::Local;
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
+    reexports::{
+        calloop::{
+            EventLoop,
+            timer::{TimeoutAction, Timer},
+        },
+        calloop_wayland_source::WaylandSource,
+    },
     registry::RegistryState,
     seat::SeatState,
     shell::{
@@ -27,14 +35,14 @@ fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
-    let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell not available");
     let shm = Shm::bind(&globals, &qh).expect("wl_shm not available");
 
+    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     let surface = compositor.create_surface(&qh);
+    let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell not available");
 
     let layer =
         layer_shell.create_layer_surface(&qh, surface, Layer::Overlay, Some("sometime"), None);
@@ -58,12 +66,39 @@ fn main() {
     let canvas = Canvas::new(SIDE, Theme::default());
     let mut sometime = Sometime::new(widget, canvas);
 
+    let mut event_loop: EventLoop<Sometime> =
+        EventLoop::try_new().expect("Failed to initialize event loop");
+    let loop_handle = event_loop.handle();
+
+    WaylandSource::new(conn, event_queue)
+        .insert(loop_handle.clone())
+        .unwrap();
+
+    let timer = Timer::from_duration(calc_next_tick());
+    loop_handle
+        .insert_source(timer, move |_deadline, _timer_handle, data| {
+            data.is_happening = true;
+            TimeoutAction::ToDuration(calc_next_tick())
+        })
+        .expect("Failed to insert timer");
+
     loop {
-        event_queue.blocking_dispatch(&mut sometime).unwrap();
+        event_loop.dispatch(None, &mut sometime).unwrap();
+
+        if sometime.is_happening {
+            sometime.is_happening = false;
+            sometime.draw(&qh);
+        }
 
         if sometime.widget.exit {
             println!("Exiting sometime");
             break;
         }
     }
+}
+
+fn calc_next_tick() -> std::time::Duration {
+    let now = Local::now();
+    let ms_in_current_sec = now.timestamp_subsec_millis();
+    std::time::Duration::from_millis((1000 - ms_in_current_sec) as u64)
 }

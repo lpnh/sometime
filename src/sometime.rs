@@ -16,6 +16,7 @@ pub struct Sometime {
     view: View,
     last_second: u32,
     last_calendar_day: u32,
+    pub is_happening: bool,
 }
 
 impl Sometime {
@@ -26,6 +27,7 @@ impl Sometime {
             view: View::Clock,
             last_second: u32::MAX,
             last_calendar_day: u32::MAX,
+            is_happening: false,
         }
     }
 
@@ -52,12 +54,6 @@ impl Sometime {
                 if sec != self.last_second {
                     self.last_second = sec;
                     self.draw_clock_view(qh, now);
-                } else {
-                    self.widget
-                        .layer
-                        .wl_surface()
-                        .frame(qh, self.widget.layer.wl_surface().clone());
-                    self.widget.layer.commit();
                 }
             }
             View::Calendar => {
@@ -65,12 +61,6 @@ impl Sometime {
                 if day != self.last_calendar_day {
                     self.last_calendar_day = day;
                     self.draw_calendar(qh, now);
-                } else {
-                    self.widget
-                        .layer
-                        .wl_surface()
-                        .frame(qh, self.widget.layer.wl_surface().clone());
-                    self.widget.layer.commit();
                 }
             }
         }
@@ -91,7 +81,7 @@ impl Sometime {
         self.update_surface(qh);
     }
 
-    fn update_surface(&mut self, qh: &QueueHandle<Self>) {
+    fn update_surface(&mut self, _qh: &QueueHandle<Self>) {
         let data = self.canvas.get_data();
         let side = self.canvas.side;
         let stride = side * 4;
@@ -106,7 +96,6 @@ impl Sometime {
 
         let wl_surface = self.widget.layer.wl_surface();
         wl_surface.damage_buffer(0, 0, side, side);
-        wl_surface.frame(qh, wl_surface.clone());
         buffer.attach_to(wl_surface).expect("buffer attach");
         self.widget.layer.commit();
     }
