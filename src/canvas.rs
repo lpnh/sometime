@@ -36,21 +36,21 @@ impl Canvas {
 
                 // Center dot
                 if distance < 4.0 {
-                    let index = ((y * self.side + x) * 4) as usize;
+                    let index = self.pixel_index(x, y);
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4]
                             .copy_from_slice(self.theme.primary.as_ref());
                     }
                 // Background
                 } else if distance <= self.radius - 2.0 {
-                    let index = ((y * self.side + x) * 4) as usize;
+                    let index = self.pixel_index(x, y);
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4]
                             .copy_from_slice(self.theme.background.as_ref());
                     }
                 // Frame
                 } else if distance <= self.radius {
-                    let index = ((y * self.side + x) * 4) as usize;
+                    let index = self.pixel_index(x, y);
                     if index + 3 < self.pixel_data.len() {
                         self.pixel_data[index..index + 4]
                             .copy_from_slice(self.theme.frame.as_ref());
@@ -123,7 +123,7 @@ impl Canvas {
                             continue;
                         };
 
-                        let index = ((py * self.side + px) * 4) as usize;
+                        let index = self.pixel_index(px, py);
                         blend_pixel(
                             &mut self.pixel_data,
                             index,
@@ -154,6 +154,16 @@ impl Canvas {
 
     pub fn get_data(&self) -> &[u8] {
         &self.pixel_data
+    }
+
+    #[inline]
+    fn pixel_index(&self, x: i32, y: i32) -> usize {
+        Self::calculate_pixel_index(self.side, x, y)
+    }
+
+    #[inline]
+    fn calculate_pixel_index(side: i32, x: i32, y: i32) -> usize {
+        ((y * side + x) * 4) as usize
     }
 
     fn distance_to(&self, other: (i32, i32)) -> f32 {
@@ -276,7 +286,7 @@ impl Canvas {
                 for py in cell_y..(cell_y + cell_height).min(self.side) {
                     for px in cell_x..(cell_x + cell_width - 2 * margin).min(self.side) {
                         if px >= 0 && py >= 0 && px < self.side && py < self.side {
-                            let index = ((py * self.side + px) * 4) as usize;
+                            let index = self.pixel_index(px, py);
                             if index + 3 < self.pixel_data.len() {
                                 self.pixel_data[index..index + 4]
                                     .copy_from_slice(self.theme.frame.as_ref());
@@ -303,7 +313,7 @@ impl Canvas {
                     continue;
                 }
 
-                let index = ((py * self.side + px) * 4) as usize;
+                let index = self.pixel_index(px, py);
                 if index + 3 >= self.pixel_data.len() {
                     continue;
                 }
@@ -343,7 +353,7 @@ impl Canvas {
                 let py = y + gy;
 
                 if px >= 0 && px < side && py >= 0 && py < side {
-                    let index = ((py * side + px) * 4) as usize;
+                    let index = Self::calculate_pixel_index(side, px, py);
                     let alpha = glyph_color.a() as f32 / 255.0;
                     let color_bgra = [
                         glyph_color.b(),
