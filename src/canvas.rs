@@ -129,7 +129,7 @@ impl Canvas {
                         };
 
                         let index = self.pixel_index(px, py);
-                        blend_pixel(
+                        Self::alpha_blending(
                             &mut self.pixel_data,
                             index,
                             [color[0], color[1], color[2], 255],
@@ -368,7 +368,7 @@ impl Canvas {
                         glyph_color.r(),
                         glyph_color.a(),
                     ];
-                    blend_pixel(pixel_data, index, color_bgra, alpha);
+                    Self::alpha_blending(pixel_data, index, color_bgra, alpha);
                 }
             },
         );
@@ -432,16 +432,24 @@ impl Canvas {
         let last = next_month - Duration::days(1);
         last.day() as i32
     }
-}
 
-fn blend_pixel(pixel_data: &mut [u8], index: usize, color: [u8; 4], alpha: f32) {
-    if index + 3 >= pixel_data.len() {
-        return;
+    fn alpha_blending(pxl_data: &mut [u8], idx: usize, color: [u8; 4], alpha: f32) {
+        if idx + 3 >= pxl_data.len() {
+            return;
+        }
+
+        // Convert alpha (0.0-1.0) to integer to avoid float math
+        // The 256 scale matches our 8-bit color depth and enables right shift by 8
+        let alpha_u16 = (alpha * 256.0) as u16;
+        let inv_alpha = 256 - alpha_u16;
+
+        pxl_data[idx] = Self::blend_color(color[0], alpha_u16, pxl_data[idx], inv_alpha);
+        pxl_data[idx + 1] = Self::blend_color(color[1], alpha_u16, pxl_data[idx + 1], inv_alpha);
+        pxl_data[idx + 2] = Self::blend_color(color[2], alpha_u16, pxl_data[idx + 2], inv_alpha);
     }
-    let inv_alpha = 1.0 - alpha;
-    pixel_data[index] = (color[0] as f32 * alpha + pixel_data[index] as f32 * inv_alpha) as u8;
-    pixel_data[index + 1] =
-        (color[1] as f32 * alpha + pixel_data[index + 1] as f32 * inv_alpha) as u8;
-    pixel_data[index + 2] =
-        (color[2] as f32 * alpha + pixel_data[index + 2] as f32 * inv_alpha) as u8;
+
+    #[inline]
+    fn blend_color(src: u8, alpha: u16, dst: u8, inv_alpha: u16) -> u8 {
+        ((src as u16 * alpha + dst as u16 * inv_alpha) >> 8) as u8
+    }
 }
