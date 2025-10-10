@@ -32,30 +32,27 @@ impl Canvas {
     pub fn draw_face(&mut self) {
         for y in 0..self.side {
             for x in 0..self.side {
-                let distance = Self::distance_to(self, (x, y));
+                let index = self.pixel_index(x, y);
+                if index + 3 >= self.pixel_data.len() {
+                    continue;
+                }
+
+                let distance = self.distance_to((x, y));
 
                 // Center dot
-                if distance < 4.0 {
-                    let index = self.pixel_index(x, y);
-                    if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4]
-                            .copy_from_slice(self.theme.primary.as_ref());
-                    }
+                let color = if distance < 4.0 {
+                    self.theme.primary.as_ref()
                 // Background
                 } else if distance <= self.radius - 2.0 {
-                    let index = self.pixel_index(x, y);
-                    if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4]
-                            .copy_from_slice(self.theme.background.as_ref());
-                    }
+                    self.theme.background.as_ref()
                 // Frame
                 } else if distance <= self.radius {
-                    let index = self.pixel_index(x, y);
-                    if index + 3 < self.pixel_data.len() {
-                        self.pixel_data[index..index + 4]
-                            .copy_from_slice(self.theme.frame.as_ref());
-                    }
-                }
+                    self.theme.frame.as_ref()
+                } else {
+                    continue; // Outside circle
+                };
+
+                self.pixel_data[index..index + 4].copy_from_slice(color);
             }
         }
     }
@@ -103,9 +100,9 @@ impl Canvas {
         let mut y = self.radius;
 
         let half_thickness = thickness as f32 / 2.0;
+        let search_radius = (half_thickness + 2.0).ceil() as i32;
 
         for _ in 0..=steps {
-            let search_radius = (half_thickness + 2.0).ceil() as i32;
             for dy_offset in -search_radius..=search_radius {
                 for dx_offset in -search_radius..=search_radius {
                     let px = (x + dx_offset as f32).round() as i32;
@@ -307,6 +304,11 @@ impl Canvas {
         height: i32,
         frame_thickness: i32,
     ) {
+        let x_frame_end = x + frame_thickness;
+        let x_width_frame = x + width - frame_thickness;
+        let y_frame_end = y + frame_thickness;
+        let y_height_frame = y + height - frame_thickness;
+
         for py in y..(y + height).min(self.side) {
             for px in x..(x + width).min(self.side) {
                 if px < 0 || py < 0 || px >= self.side || py >= self.side {
@@ -318,10 +320,10 @@ impl Canvas {
                     continue;
                 }
 
-                let is_frame = px < x + frame_thickness
-                    || px >= x + width - frame_thickness
-                    || py < y + frame_thickness
-                    || py >= y + height - frame_thickness;
+                let is_frame = px < x_frame_end
+                    || px >= x_width_frame
+                    || py < y_frame_end
+                    || py >= y_height_frame;
 
                 let color = if is_frame {
                     self.theme.frame.as_ref()
