@@ -1,4 +1,4 @@
-use chrono::Datelike;
+use chrono::{Datelike, Duration, NaiveDate};
 use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 use std::f32::consts::PI;
 
@@ -211,8 +211,7 @@ impl Canvas {
             .expect("invalid color");
 
         // Calculate grid dimensions
-        let first_of_month =
-            chrono::NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date: first of month");
+        let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
         let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
         let days_in_month = Self::days_in_month(year, month);
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
@@ -293,18 +292,10 @@ impl Canvas {
                 let margin = 4;
                 let cell_x = rect_x + padding + col * cell_width + margin;
                 let cell_y = content_y + row * cell_height;
+                let cell_w = cell_width - 2 * margin;
+                let frame_color = self.theme.frame;
 
-                for py in cell_y..(cell_y + cell_height).min(self.side) {
-                    for px in cell_x..(cell_x + cell_width - 2 * margin).min(self.side) {
-                        if px >= 0 && py >= 0 && px < self.side && py < self.side {
-                            let index = self.pixel_index(px, py);
-                            if index + 3 < self.pixel_data.len() {
-                                self.pixel_data[index..index + 4]
-                                    .copy_from_slice(self.theme.frame.as_ref());
-                            }
-                        }
-                    }
-                }
+                self.fill_rect(cell_x, cell_y, cell_w, cell_height, frame_color.as_ref());
             }
             self.draw_text(&day_str, text_x, text_y, day_font_size, primary_color);
         }
@@ -318,34 +309,34 @@ impl Canvas {
         height: i32,
         frame_thickness: i32,
     ) {
-        let x_frame_end = x + frame_thickness;
-        let x_width_frame = x + width - frame_thickness;
-        let y_frame_end = y + frame_thickness;
-        let y_height_frame = y + height - frame_thickness;
+        // Draw frame
+        let frame_color = self.theme.frame;
+        self.fill_rect(x, y, width, height, frame_color.as_ref());
 
+        // Draw background
+        let bg_color = self.theme.background;
+        let inner_x = x + frame_thickness;
+        let inner_y = y + frame_thickness;
+        let inner_width = width - 2 * frame_thickness;
+        let inner_height = height - 2 * frame_thickness;
+        self.fill_rect(
+            inner_x,
+            inner_y,
+            inner_width,
+            inner_height,
+            bg_color.as_ref(),
+        );
+    }
+
+    fn fill_rect(&mut self, x: i32, y: i32, width: i32, height: i32, color: &[u8]) {
         for py in y..(y + height).min(self.side) {
             for px in x..(x + width).min(self.side) {
-                if px < 0 || py < 0 || px >= self.side || py >= self.side {
-                    continue;
+                if px >= 0 && py >= 0 && px < self.side && py < self.side {
+                    let index = self.pixel_index(px, py);
+                    if index + 3 < self.pixel_data.len() {
+                        self.pixel_data[index..index + 4].copy_from_slice(color);
+                    }
                 }
-
-                let index = self.pixel_index(px, py);
-                if index + 3 >= self.pixel_data.len() {
-                    continue;
-                }
-
-                let is_frame = px < x_frame_end
-                    || px >= x_width_frame
-                    || py < y_frame_end
-                    || py >= y_height_frame;
-
-                let color = if is_frame {
-                    self.theme.frame.as_ref()
-                } else {
-                    self.theme.background.as_ref()
-                };
-
-                self.pixel_data[index..index + 4].copy_from_slice(color);
             }
         }
     }
@@ -437,9 +428,8 @@ impl Canvas {
         } else {
             (year, month + 1)
         };
-        let next_month = chrono::NaiveDate::from_ymd_opt(ny, nm, 1)
-            .expect("days_in_month: invalid next month date");
-        let last = next_month - chrono::Duration::days(1);
+        let next_month = NaiveDate::from_ymd_opt(ny, nm, 1).expect("days_in_month: invalid date");
+        let last = next_month - Duration::days(1);
         last.day() as i32
     }
 }
