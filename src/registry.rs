@@ -31,7 +31,6 @@ impl CompositorHandler for Sometime {
         _new_factor: i32,
     ) {
     }
-
     fn transform_changed(
         &mut self,
         _conn: &Connection,
@@ -40,17 +39,14 @@ impl CompositorHandler for Sometime {
         _new_transform: wl_output::Transform,
     ) {
     }
-
     fn frame(
         &mut self,
         _conn: &Connection,
-        qh: &QueueHandle<Self>,
+        _qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw(qh);
     }
-
     fn surface_enter(
         &mut self,
         _conn: &Connection,
@@ -59,7 +55,6 @@ impl CompositorHandler for Sometime {
         _output: &wl_output::WlOutput,
     ) {
     }
-
     fn surface_leave(
         &mut self,
         _conn: &Connection,
@@ -74,7 +69,6 @@ impl OutputHandler for Sometime {
     fn output_state(&mut self) -> &mut OutputState {
         &mut self.widget.output_state
     }
-
     fn new_output(
         &mut self,
         _conn: &Connection,
@@ -106,14 +100,14 @@ impl LayerShellHandler for Sometime {
     fn configure(
         &mut self,
         _conn: &Connection,
-        qh: &QueueHandle<Self>,
+        _qh: &QueueHandle<Self>,
         _layer: &LayerSurface,
         _configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
         // called once
-        self.init();
-        self.draw(qh);
+        self.canvas.init(self.theme);
+        self.draw();
     }
 }
 
@@ -185,7 +179,7 @@ impl KeyboardHandler for Sometime {
     fn press_key(
         &mut self,
         _conn: &Connection,
-        qh: &QueueHandle<Self>,
+        _qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
         event: KeyEvent,
@@ -193,7 +187,7 @@ impl KeyboardHandler for Sometime {
         // Toggle between clock and calendar with Tab or Space
         if event.keysym == Keysym::Tab || event.keysym == Keysym::space {
             self.toggle_view();
-            self.draw(qh);
+            self.draw();
         } else {
             // For convenience, any other key exits
             self.widget.exit = true;

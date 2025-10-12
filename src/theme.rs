@@ -2,8 +2,28 @@
 pub struct Bgra([u8; 4]);
 
 impl Bgra {
-    pub const fn from_rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+    const fn from_rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
         Self([blue, green, red, alpha])
+    }
+
+    #[inline(always)]
+    pub const fn r(&self) -> u8 {
+        self.0[2]
+    }
+
+    #[inline(always)]
+    pub const fn g(&self) -> u8 {
+        self.0[1]
+    }
+
+    #[inline(always)]
+    pub const fn b(&self) -> u8 {
+        self.0[0]
+    }
+
+    #[inline(always)]
+    pub const fn a(&self) -> u8 {
+        self.0[3]
     }
 }
 

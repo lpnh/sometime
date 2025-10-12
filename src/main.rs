@@ -11,7 +11,6 @@ use widget::Widget;
 use chrono::Local;
 use smithay_client_toolkit::{
     compositor::CompositorState,
-    output::OutputState,
     reexports::{
         calloop::{
             EventLoop,
@@ -19,8 +18,6 @@ use smithay_client_toolkit::{
         },
         calloop_wayland_source::WaylandSource,
     },
-    registry::RegistryState,
-    seat::SeatState,
     shell::{
         WaylandSurface,
         wlr_layer::{KeyboardInteractivity, Layer, LayerShell},
@@ -29,7 +26,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{Connection, globals::registry_queue_init};
 
-const SIDE: i32 = 512;
+const SIDE: i32 = 384;
 
 fn main() {
     env_logger::init();
@@ -52,18 +49,11 @@ fn main() {
 
     let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
 
-    let widget = Widget {
-        registry_state: RegistryState::new(&globals),
-        seat_state: SeatState::new(&globals, &qh),
-        output_state: OutputState::new(&globals, &qh),
-        shm,
-        exit: false,
-        pool,
-        layer,
-        keyboard: None,
-    };
-    let canvas = Canvas::new(SIDE, Theme::default());
-    let mut sometime = Sometime::new(widget, canvas);
+    let mut sometime = Sometime::new(
+        Theme::default(),
+        Widget::new(&globals, &qh, shm, pool, layer),
+        Canvas::new(SIDE),
+    );
 
     let mut event_loop: EventLoop<Sometime> =
         EventLoop::try_new().expect("Failed to initialize event loop");
@@ -86,7 +76,7 @@ fn main() {
 
         if sometime.is_happening {
             sometime.is_happening = false;
-            sometime.draw(&qh);
+            sometime.draw();
         }
 
         if sometime.widget.exit {

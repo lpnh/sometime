@@ -1,8 +1,8 @@
-use chrono::{DateTime, Datelike, Local, Timelike};
+use chrono::{Datelike, Local, Timelike};
 use smithay_client_toolkit::shell::WaylandSurface;
-use wayland_client::{QueueHandle, protocol::wl_shm::Format::Argb8888};
+use wayland_client::protocol::wl_shm::Format::Argb8888;
 
-use super::{canvas::Canvas, widget::Widget};
+use super::{canvas::Canvas, theme::Theme, widget::Widget};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum View {
@@ -12,7 +12,8 @@ pub enum View {
 
 pub struct Sometime {
     pub widget: Widget,
-    canvas: Canvas,
+    pub canvas: Canvas,
+    pub theme: Theme,
     view: View,
     last_second: u32,
     last_calendar_day: u32,
@@ -20,8 +21,9 @@ pub struct Sometime {
 }
 
 impl Sometime {
-    pub fn new(widget: Widget, canvas: Canvas) -> Self {
+    pub fn new(theme: Theme, widget: Widget, canvas: Canvas) -> Self {
         Self {
+            theme,
             widget,
             canvas,
             view: View::Clock,
@@ -41,11 +43,7 @@ impl Sometime {
         self.last_calendar_day = u32::MAX;
     }
 
-    pub fn init(&mut self) {
-        self.canvas.cache_face();
-    }
-
-    pub fn draw(&mut self, qh: &QueueHandle<Self>) {
+    pub fn draw(&mut self) {
         let now = Local::now();
 
         match self.view {
@@ -53,35 +51,33 @@ impl Sometime {
                 let sec = now.second();
                 if sec != self.last_second {
                     self.last_second = sec;
-                    self.draw_clock_view(qh, now);
+                    self.canvas.draw_clock(
+                        now.hour(),
+                        now.minute(),
+                        now.second(),
+                        self.theme,
+                    );
                 }
             }
             View::Calendar => {
                 let day = now.day();
                 if day != self.last_calendar_day {
                     self.last_calendar_day = day;
-                    self.draw_calendar(qh, now);
+                    self.canvas.clear();
+                    self.canvas.draw_calendar(
+                        now.year(),
+                        now.month(),
+                        now.day(),
+                        self.theme,
+                    );
                 }
             }
         }
+
+        self.update_surface();
     }
 
-    fn draw_clock_view(&mut self, qh: &QueueHandle<Self>, now: DateTime<Local>) {
-        self.canvas.restore_face();
-        self.canvas.draw_hour_hand(now.hour(), now.minute());
-        self.canvas.draw_minute_hand(now.minute());
-        self.canvas.draw_second_hand(now.second());
-        self.update_surface(qh);
-    }
-
-    fn draw_calendar(&mut self, qh: &QueueHandle<Self>, now: DateTime<Local>) {
-        self.canvas.clear();
-        self.canvas
-            .draw_calendar_view(now.year(), now.month(), now.day());
-        self.update_surface(qh);
-    }
-
-    fn update_surface(&mut self, _qh: &QueueHandle<Self>) {
+    fn update_surface(&mut self) {
         let data = self.canvas.get_data();
         let side = self.canvas.side;
         let stride = side * 4;
