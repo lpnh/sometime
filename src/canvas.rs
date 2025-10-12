@@ -358,11 +358,7 @@ impl Canvas {
         );
         buffer.shape_until_scroll(&mut self.font_system, false);
 
-        buffer
-            .layout_runs()
-            .next()
-            .map(|run| run.line_w)
-            .unwrap_or(0.0)
+        buffer.layout_runs().next().map_or(0.0, |run| run.line_w)
     }
 
     fn measure_text_height(&self, font_size: f32) -> f32 {

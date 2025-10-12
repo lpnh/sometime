@@ -6,23 +6,23 @@ impl Bgra {
         Self([blue, green, red, alpha])
     }
 
-    #[inline(always)]
-    pub const fn r(&self) -> u8 {
+    #[inline]
+    pub const fn r(self) -> u8 {
         self.0[2]
     }
 
-    #[inline(always)]
-    pub const fn g(&self) -> u8 {
+    #[inline]
+    pub const fn g(self) -> u8 {
         self.0[1]
     }
 
-    #[inline(always)]
-    pub const fn b(&self) -> u8 {
+    #[inline]
+    pub const fn b(self) -> u8 {
         self.0[0]
     }
 
-    #[inline(always)]
-    pub const fn a(&self) -> u8 {
+    #[inline]
+    pub const fn a(self) -> u8 {
         self.0[3]
     }
 }
