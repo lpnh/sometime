@@ -126,7 +126,8 @@ impl Canvas {
                         let alpha = if squared_dist <= inner_radius_sq {
                             1.0
                         } else if squared_dist <= outer_radius_sq {
-                            (outer_radius - squared_dist.sqrt()) / 2.0
+                            1.0 - (squared_dist - inner_radius_sq)
+                                / (outer_radius_sq - inner_radius_sq)
                         } else {
                             continue;
                         };
@@ -135,7 +136,7 @@ impl Canvas {
                             &mut self.pixel_data,
                             Self::pixel_idx(self.side, px, py),
                             color,
-                            alpha,
+                            (alpha * 255.0) as u8,
                         );
                     }
                 }
@@ -310,8 +311,12 @@ impl Canvas {
                 let py = y + gy;
 
                 if px >= 0 && px < side && py >= 0 && py < side {
-                    let alpha = glyph_color.a() as f32 / 255.0;
-                    Self::alpha_blending(pixel_data, Self::pixel_idx(side, px, py), color, alpha);
+                    Self::alpha_blending(
+                        pixel_data,
+                        Self::pixel_idx(side, px, py),
+                        color,
+                        glyph_color.a(),
+                    );
                 }
             },
         );
@@ -382,23 +387,20 @@ impl Canvas {
         }
     }
 
-    fn alpha_blending(pxl_data: &mut [u8], idx: usize, color: Bgra, alpha: f32) {
+    fn alpha_blending(pxl_data: &mut [u8], idx: usize, color: Bgra, alpha: u8) {
         if idx + 3 >= pxl_data.len() {
             return;
         }
 
-        // Convert alpha (0.0-1.0) to integer to avoid float math
-        // The 256 scale matches our 8-bit color depth and enables right shift by 8
-        let alpha_u16 = (alpha * 256.0) as u16;
-        let inv_alpha = 256 - alpha_u16;
+        let inv_alpha = 255 - alpha;
 
-        pxl_data[idx] = Self::blend_color(color.b(), alpha_u16, pxl_data[idx], inv_alpha);
-        pxl_data[idx + 1] = Self::blend_color(color.g(), alpha_u16, pxl_data[idx + 1], inv_alpha);
-        pxl_data[idx + 2] = Self::blend_color(color.r(), alpha_u16, pxl_data[idx + 2], inv_alpha);
+        pxl_data[idx] = Self::blend_color(color.b(), alpha, pxl_data[idx], inv_alpha);
+        pxl_data[idx + 1] = Self::blend_color(color.g(), alpha, pxl_data[idx + 1], inv_alpha);
+        pxl_data[idx + 2] = Self::blend_color(color.r(), alpha, pxl_data[idx + 2], inv_alpha);
     }
 
     #[inline]
-    fn blend_color(src: u8, alpha: u16, dst: u8, inv_alpha: u16) -> u8 {
-        ((src as u16 * alpha + dst as u16 * inv_alpha) >> 8) as u8
+    fn blend_color(src: u8, alpha: u8, dst: u8, inv_alpha: u8) -> u8 {
+        ((src as u16 * alpha as u16 + dst as u16 * inv_alpha as u16) >> 8) as u8
     }
 }
