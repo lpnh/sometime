@@ -44,10 +44,10 @@ pub struct Theme {
 impl Theme {
     pub fn default() -> Self {
         Self {
-            background: Bgra::from_rgba(30, 30, 46, 210),   // Base
-            frame: Bgra::from_rgba(49, 50, 68, 210),        // Surface0
-            primary: Bgra::from_rgba(203, 166, 247, 210),   // Mauve
-            secondary: Bgra::from_rgba(180, 190, 254, 210), // Lavender
+            background: Bgra::from_rgba(24, 24, 37, 216),   // Mantle
+            frame: Bgra::from_rgba(49, 50, 68, 216),        // Surface0
+            primary: Bgra::from_rgba(235, 160, 172, 216),   // Maroon
+            secondary: Bgra::from_rgba(245, 194, 231, 216), // Pink
         }
     }
 }

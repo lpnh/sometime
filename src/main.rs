@@ -26,7 +26,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{Connection, globals::registry_queue_init};
 
-const SIDE: i32 = 384;
+const SIDE: i32 = 448;
 
 fn main() {
     env_logger::init();

@@ -69,24 +69,24 @@ impl Canvas {
 
     fn draw_hour_hand(&mut self, hour: u32, minute: u32, color: Bgra) {
         let angle = ((hour % 12) as f32 + minute as f32 / 60.0) * PI / 6.0 - PI / 2.0;
-        self.draw_thick_line_from_center(0.5, angle, 3, color);
+        self.draw_thick_line_from_center(0.5, angle, 3.0, color);
     }
 
     fn draw_minute_hand(&mut self, minute: u32, color: Bgra) {
         let angle = minute as f32 * PI / 30.0 - PI / 2.0;
-        self.draw_thick_line_from_center(0.8, angle, 2, color);
+        self.draw_thick_line_from_center(0.8, angle, 2.0, color);
     }
 
     fn draw_second_hand(&mut self, second: u32, color: Bgra) {
         let angle = second as f32 * PI / 30.0 - PI / 2.0;
-        self.draw_thick_line_from_center(0.9, angle, 1, color);
+        self.draw_thick_line_from_center(0.9, angle, 0.8, color);
     }
 
     fn draw_thick_line_from_center(
         &mut self,
         distance: f32,
         angle: f32,
-        thickness: i32,
+        thickness: f32,
         color: Bgra,
     ) {
         let end_x = self.radius + (self.radius * distance) * angle.cos();
@@ -106,7 +106,7 @@ impl Canvas {
         let mut x = self.radius;
         let mut y = self.radius;
 
-        let half_thickness = thickness as f32 / 2.0;
+        let half_thickness = thickness / 2.0;
         let search_radius = (half_thickness + 2.0).ceil() as i32;
         let inner_radius = half_thickness - 1.0;
         let outer_radius = half_thickness + 1.0;
