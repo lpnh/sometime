@@ -45,7 +45,7 @@ impl Theme {
     pub fn default() -> Self {
         Self {
             background: Bgra::from_rgba(24, 24, 37, 216),   // Mantle
-            frame: Bgra::from_rgba(49, 50, 68, 216),        // Surface0
+            frame: Bgra::from_rgba(49, 50, 68, 108),        // Surface0
             primary: Bgra::from_rgba(235, 160, 172, 216),   // Maroon
             secondary: Bgra::from_rgba(245, 194, 231, 216), // Pink
         }
