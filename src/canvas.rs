@@ -103,9 +103,6 @@ impl Canvas {
         let x_inc = dx / steps as f32;
         let y_inc = dy / steps as f32;
 
-        let mut x = self.radius;
-        let mut y = self.radius;
-
         let half_thickness = thickness / 2.0;
         let search_radius = (half_thickness + 2.0).ceil() as i32;
         let inner_radius = half_thickness - 1.0;
@@ -113,7 +110,13 @@ impl Canvas {
         let inner_radius_sq = inner_radius * inner_radius;
         let outer_radius_sq = outer_radius * outer_radius;
 
-        for _ in 0..=steps {
+        let center_gap_radius = 4;
+        let skip_steps = center_gap_radius + search_radius;
+
+        let mut x = self.radius + x_inc * skip_steps as f32;
+        let mut y = self.radius + y_inc * skip_steps as f32;
+
+        for _ in skip_steps..=steps {
             for dy_offset in -search_radius..=search_radius {
                 for dx_offset in -search_radius..=search_radius {
                     let px = (x + dx_offset as f32).round() as i32;
