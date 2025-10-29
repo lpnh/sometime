@@ -190,7 +190,7 @@ impl Canvas {
         let day_font_size = (cell_width as f32 * 0.5).ceil();
 
         let month_header = first_of_month.format("%B %Y").to_string();
-        let month_height = self.measure_text_height(month_font_size).ceil() as i32;
+        let month_height = month_font_size.ceil() as i32;
 
         // Calendar dimensions
         let total_width = cell_width * 7 + 2 * padding;
@@ -227,7 +227,7 @@ impl Canvas {
 
         // Weekday headers
         let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        let day_header_height = self.measure_text_height(weekday_font_size).ceil() as i32;
+        let day_header_height = weekday_font_size.ceil() as i32;
         for (i, day_name) in weekdays.iter().enumerate() {
             let day_w = self.measure_text_width(day_name, weekday_font_size);
             let day_x =
@@ -244,27 +244,28 @@ impl Canvas {
             let col = day_pos % 7;
 
             let day_str = day.to_string();
-            let (text_w, text_h) = self.measure_text(&day_str, day_font_size);
-
-            let text_x =
-                rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
-            let text_y = content_y + row * cell_height + (cell_height - text_h.ceil() as i32) / 2;
-
-            let text_color = if today == day as u32 {
-                // Draw background rectangle for today
-                let margin = 4;
-                let cell_x = rect_x + padding + col * cell_width + margin;
-                let cell_y = content_y + row * cell_height;
-                let cell_w = cell_width - 2 * margin;
-
-                self.fill_rect(cell_x, cell_y, cell_w, cell_height, theme.highlight);
-
-                theme.background
+            let is_today = today == day as u32;
+            let font_size = if is_today {
+                day_font_size + 6.0
             } else {
-                theme.primary
+                day_font_size
             };
 
-            self.draw_text(&day_str, text_x, text_y, day_font_size, text_color);
+            // Measure and center text in cell
+            let text_w = self.measure_text_width(&day_str, font_size);
+            let text_x =
+                rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
+            let text_y =
+                content_y + row * cell_height + (cell_height - font_size.ceil() as i32) / 2;
+
+            if is_today {
+                // Bold + shadow effect
+                self.draw_text(&day_str, text_x + 1, text_y, font_size, theme.secondary);
+                self.draw_text(&day_str, text_x, text_y - 1, font_size, theme.highlight);
+                self.draw_text(&day_str, text_x - 1, text_y - 2, font_size, theme.highlight);
+            } else {
+                self.draw_text(&day_str, text_x, text_y, font_size, theme.primary);
+            }
         }
     }
 
@@ -345,12 +346,6 @@ impl Canvas {
         buffer
     }
 
-    fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
-        let width = self.measure_text_width(text, font_size);
-        let height = self.measure_text_height(font_size);
-        (width, height)
-    }
-
     fn measure_text_width(&mut self, text: &str, font_size: f32) -> f32 {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
@@ -364,11 +359,6 @@ impl Canvas {
         buffer.shape_until_scroll(&mut self.font_system, false);
 
         buffer.layout_runs().next().map_or(0.0, |run| run.line_w)
-    }
-
-    fn measure_text_height(&self, font_size: f32) -> f32 {
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        metrics.line_height
     }
 
     fn days_in_month(year: i32, month: u32) -> i32 {
