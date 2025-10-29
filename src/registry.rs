@@ -159,12 +159,14 @@ impl KeyboardHandler for Sometime {
         _: u32,
         event: KeyEvent,
     ) {
+        let pressed_key = event.keysym;
+
         // Toggle between clock and calendar with Tab or Space
-        if event.keysym == Keysym::Tab || event.keysym == Keysym::space {
+        if pressed_key == Keysym::Tab || pressed_key == Keysym::space {
             self.toggle_view();
             self.draw();
-        } else {
-            // For convenience, any other key exits
+        // Exit on `esc` or `q`
+        } else if pressed_key == Keysym::Escape || pressed_key == Keysym::q {
             self.widget.exit = true;
         }
     }
