@@ -10,17 +10,14 @@ impl Bgra {
     pub const fn r(self) -> u8 {
         self.0[2]
     }
-
     #[inline]
     pub const fn g(self) -> u8 {
         self.0[1]
     }
-
     #[inline]
     pub const fn b(self) -> u8 {
         self.0[0]
     }
-
     #[inline]
     pub const fn a(self) -> u8 {
         self.0[3]
@@ -39,15 +36,17 @@ pub struct Theme {
     pub frame: Bgra,
     pub primary: Bgra,
     pub secondary: Bgra,
+    pub highlight: Bgra,
 }
 
 impl Theme {
     pub fn default() -> Self {
         Self {
-            background: Bgra::from_rgba(24, 24, 37, 216),   // Mantle
-            frame: Bgra::from_rgba(49, 50, 68, 108),        // Surface0
-            primary: Bgra::from_rgba(235, 160, 172, 216),   // Maroon
-            secondary: Bgra::from_rgba(245, 194, 231, 216), // Pink
+            background: Bgra::from_rgba(24, 24, 37, 242),   // Mantle
+            frame: Bgra::from_rgba(30, 30, 46, 42),         // Base
+            primary: Bgra::from_rgba(235, 160, 172, 242),   // Maroon
+            secondary: Bgra::from_rgba(245, 194, 231, 242), // Pink
+            highlight: Bgra::from_rgba(243, 139, 168, 242), // Red
         }
     }
 }

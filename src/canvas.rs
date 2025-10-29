@@ -43,8 +43,8 @@ impl Canvas {
                 let center_dist_sq = dx * dx + dy * dy;
 
                 // Center dot
-                let color = if center_dist_sq < 16.0 {
-                    theme.primary
+                let color = if center_dist_sq < 12.0 {
+                    theme.highlight
                 // Background
                 } else if center_dist_sq <= bg_radius_sq {
                     theme.background
@@ -79,7 +79,7 @@ impl Canvas {
 
     fn draw_second_hand(&mut self, second: u32, color: Bgra) {
         let angle = second as f32 * PI / 30.0 - PI / 2.0;
-        self.draw_thick_line_from_center(0.9, angle, 0.8, color);
+        self.draw_thick_line_from_center(0.9, angle, 0.7, color);
     }
 
     fn draw_thick_line_from_center(
@@ -167,9 +167,6 @@ impl Canvas {
     }
 
     pub fn draw_calendar(&mut self, year: i32, month: u32, today: u32, theme: Theme) {
-        let primary_color = theme.primary;
-        let secondary_color = theme.secondary;
-
         // Calculate grid dimensions
         let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
         let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
@@ -221,7 +218,7 @@ impl Canvas {
             month_x,
             content_y,
             month_font_size,
-            primary_color,
+            theme.primary,
         );
         content_y += month_height + padding;
 
@@ -233,7 +230,7 @@ impl Canvas {
             let day_x =
                 rect_x + padding + i as i32 * cell_width + (cell_width - day_w.ceil() as i32) / 2;
             let day_y = content_y + (cell_height - day_header_height) / 2;
-            self.draw_text(day_name, day_x, day_y, weekday_font_size, secondary_color);
+            self.draw_text(day_name, day_x, day_y, weekday_font_size, theme.secondary);
         }
         content_y += cell_height;
 
@@ -250,16 +247,21 @@ impl Canvas {
                 rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
             let text_y = content_y + row * cell_height + (cell_height - text_h.ceil() as i32) / 2;
 
-            if today == day as u32 {
+            let text_color = if today == day as u32 {
                 // Draw background rectangle for today
                 let margin = 4;
                 let cell_x = rect_x + padding + col * cell_width + margin;
                 let cell_y = content_y + row * cell_height;
                 let cell_w = cell_width - 2 * margin;
 
-                self.fill_rect(cell_x, cell_y, cell_w, cell_height, theme.frame);
-            }
-            self.draw_text(&day_str, text_x, text_y, day_font_size, primary_color);
+                self.fill_rect(cell_x, cell_y, cell_w, cell_height, theme.highlight);
+
+                theme.background
+            } else {
+                theme.primary
+            };
+
+            self.draw_text(&day_str, text_x, text_y, day_font_size, text_color);
         }
     }
 
