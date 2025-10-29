@@ -1,3 +1,3 @@
 # sometime
 
-a clock and calendar widget
+a floating clock and calendar for Wayland
