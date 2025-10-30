@@ -8,4 +8,4 @@ smithay-client-toolkit = "0.20.0"
 wayland-client = "0.31.11"
 chrono = { version = "0.4.42", features = ["serde"] }
 env_logger = "0.11.8"
-cosmic-text = "0.14.2"
+cosmic-text = "0.15.0"

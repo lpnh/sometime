@@ -1,5 +1,5 @@
 use chrono::{Datelike, Duration, NaiveDate};
-use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
+use cosmic_text::{Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 use std::f32::consts::PI;
 
 use super::theme::{Bgra, Theme};
@@ -181,19 +181,19 @@ impl Canvas {
         let frame_thickness = 2;
 
         // Grid layout with 7 columns
-        let cell_width = (self.side - 2 * padding) / 7;
-        let cell_height = (cell_width as f32 * 0.7).ceil() as i32;
+        let cell_width = ((self.side - 2 * padding) / 7) as f32;
+        let cell_height = (cell_width * 0.7).ceil() as i32;
 
         // Font sizes
-        let month_font_size = (cell_width as f32 * 0.5).ceil();
-        let weekday_font_size = (cell_width as f32 * 0.4).ceil();
-        let day_font_size = (cell_width as f32 * 0.5).ceil();
+        let month_font_size = (cell_width * 0.5).ceil();
+        let weekday_font_size = (cell_width * 0.4).ceil();
+        let day_font_size = (cell_width * 0.5).ceil();
 
         let month_header = first_of_month.format("%B %Y").to_string();
         let month_height = month_font_size.ceil() as i32;
 
         // Calendar dimensions
-        let total_width = cell_width * 7 + 2 * padding;
+        let total_width = cell_width as i32 * 7 + 2 * padding;
         let total_height = 3 * padding + month_height + cell_height + rows_needed * cell_height;
 
         // Center on canvas
@@ -214,13 +214,12 @@ impl Canvas {
         let mut content_y = rect_y + padding;
 
         // Month name
-        let month_w = self.measure_text_width(&month_header, month_font_size);
-        let month_x = rect_x + (total_width - month_w.ceil() as i32) / 2;
         self.draw_text(
             &month_header,
-            month_x,
+            rect_x + padding,
             content_y,
             month_font_size,
+            total_width as f32 - 2.0 * padding as f32,
             theme.primary,
         );
         content_y += month_height + padding;
@@ -229,11 +228,16 @@ impl Canvas {
         let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         let day_header_height = weekday_font_size.ceil() as i32;
         for (i, day_name) in weekdays.iter().enumerate() {
-            let day_w = self.measure_text_width(day_name, weekday_font_size);
-            let day_x =
-                rect_x + padding + i as i32 * cell_width + (cell_width - day_w.ceil() as i32) / 2;
+            let day_x = rect_x + padding + i as i32 * cell_width as i32;
             let day_y = content_y + (cell_height - day_header_height) / 2;
-            self.draw_text(day_name, day_x, day_y, weekday_font_size, theme.secondary);
+            self.draw_text(
+                day_name,
+                day_x,
+                day_y,
+                weekday_font_size,
+                cell_width,
+                theme.secondary,
+            );
         }
         content_y += cell_height;
 
@@ -251,20 +255,45 @@ impl Canvas {
                 day_font_size
             };
 
-            // Measure and center text in cell
-            let text_w = self.measure_text_width(&day_str, font_size);
-            let text_x =
-                rect_x + padding + col * cell_width + (cell_width - text_w.ceil() as i32) / 2;
+            let text_x = rect_x + padding + col * cell_width as i32;
             let text_y =
                 content_y + row * cell_height + (cell_height - font_size.ceil() as i32) / 2;
 
             if is_today {
                 // Bold + shadow effect
-                self.draw_text(&day_str, text_x + 1, text_y, font_size, theme.secondary);
-                self.draw_text(&day_str, text_x, text_y - 1, font_size, theme.highlight);
-                self.draw_text(&day_str, text_x - 1, text_y - 2, font_size, theme.highlight);
+                self.draw_text(
+                    &day_str,
+                    text_x + 1,
+                    text_y,
+                    font_size,
+                    cell_width,
+                    theme.secondary,
+                );
+                self.draw_text(
+                    &day_str,
+                    text_x,
+                    text_y - 1,
+                    font_size,
+                    cell_width,
+                    theme.highlight,
+                );
+                self.draw_text(
+                    &day_str,
+                    text_x - 1,
+                    text_y - 2,
+                    font_size,
+                    cell_width,
+                    theme.highlight,
+                );
             } else {
-                self.draw_text(&day_str, text_x, text_y, font_size, theme.primary);
+                self.draw_text(
+                    &day_str,
+                    text_x,
+                    text_y,
+                    font_size,
+                    cell_width,
+                    theme.primary,
+                );
             }
         }
     }
@@ -299,8 +328,8 @@ impl Canvas {
         }
     }
 
-    fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, color: Bgra) {
-        let buffer = self.create_drawing_buffer(text, font_size);
+    fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, width: f32, color: Bgra) {
+        let buffer = self.create_drawing_buffer(text, font_size, width);
         // Convert BGRA to RGBA
         let text_color = Color::rgba(color.r(), color.g(), color.b(), color.a());
 
@@ -328,37 +357,19 @@ impl Canvas {
         );
     }
 
-    fn create_drawing_buffer(&mut self, text: &str, font_size: f32) -> Buffer {
+    fn create_drawing_buffer(&mut self, text: &str, font_size: f32, width: f32) -> Buffer {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_size(
-            &mut self.font_system,
-            Some(self.side as f32),
-            Some(self.side as f32),
-        );
+        buffer.set_size(&mut self.font_system, Some(width), Some(self.side as f32));
         buffer.set_text(
             &mut self.font_system,
             text,
             &Attrs::new(),
             Shaping::Advanced,
+            Some(Align::Center),
         );
         buffer.shape_until_scroll(&mut self.font_system, false);
         buffer
-    }
-
-    fn measure_text_width(&mut self, text: &str, font_size: f32) -> f32 {
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        let mut buffer = Buffer::new(&mut self.font_system, metrics);
-
-        buffer.set_text(
-            &mut self.font_system,
-            text,
-            &Attrs::new(),
-            Shaping::Advanced,
-        );
-        buffer.shape_until_scroll(&mut self.font_system, false);
-
-        buffer.layout_runs().next().map_or(0.0, |run| run.line_w)
     }
 
     fn days_in_month(year: i32, month: u32) -> i32 {
