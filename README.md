@@ -1,6 +1,6 @@
 # sometime
 
-a floating clock and calendar for Wayland
+floating clock and calendar for Wayland
 
 ## screenshots
 

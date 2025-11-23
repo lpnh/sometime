@@ -39,8 +39,8 @@ pub struct Theme {
     pub highlight: Bgra,
 }
 
-impl Theme {
-    pub fn default() -> Self {
+impl Default for Theme {
+    fn default() -> Self {
         Self {
             background: Bgra::from_rgba(24, 24, 37, 242),   // Mantle
             frame: Bgra::from_rgba(30, 30, 46, 42),         // Base
