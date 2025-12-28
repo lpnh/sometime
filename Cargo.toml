@@ -1,5 +1,5 @@
 [workspace]
-members = ["sometime-core", "sometime-clock", "sometime-calendar"]
+members = ["sometime", "sometime-clock", "sometime-calendar"]
 resolver = "2"
 
 [workspace.dependencies]

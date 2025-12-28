@@ -1,7 +1,7 @@
 use chrono::{Datelike, Duration, NaiveDate};
 use cosmic_text::{Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 
-use sometime_core::{Bgra, CanvasPrimitives, Theme};
+use sometime::{Bgra, CanvasPrimitives, Theme};
 
 pub struct CalendarCanvas {
     pub primitives: CanvasPrimitives,

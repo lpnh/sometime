@@ -1,7 +1,7 @@
 use chrono::{Local, Timelike};
 
 use super::canvas::ClockCanvas;
-use sometime_core::{App, Theme, Widget};
+use sometime::{App, Theme, Widget};
 
 pub struct Clock {
     pub widget: Widget,
@@ -20,7 +20,7 @@ impl Clock {
             self.last_second = sec;
             self.canvas
                 .draw_clock(now.hour(), now.minute(), now.second(), self.theme);
-            sometime_core::update_surface(
+            sometime::update_surface(
                 &self.widget.layer,
                 &mut self.widget.pool,
                 &self.canvas.primitives,

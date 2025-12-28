@@ -1,6 +1,6 @@
 [package]
 name = "sometime-clock"
-version = "0.1.0"
+version = "25.12.28"
 edition = "2024"
 
 [[bin]]
@@ -8,7 +8,7 @@ name = "sometime-clock"
 path = "src/main.rs"
 
 [dependencies]
-sometime-core = { path = "../sometime-core" }
+sometime = { path = "../sometime" }
 chrono = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 wayland-client = { workspace = true }

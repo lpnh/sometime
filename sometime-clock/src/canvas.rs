@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use sometime_core::{Bgra, CanvasPrimitives, Theme};
+use sometime::{Bgra, CanvasPrimitives, Theme};
 
 pub struct ClockCanvas {
     pub primitives: CanvasPrimitives,

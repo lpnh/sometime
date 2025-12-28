@@ -1,6 +1,6 @@
 [package]
-name = "sometime-core"
-version = "0.1.0"
+name = "sometime"
+version = "25.12.28"
 edition = "2024"
 
 [dependencies]

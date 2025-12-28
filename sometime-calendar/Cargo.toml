@@ -1,6 +1,6 @@
 [package]
 name = "sometime-calendar"
-version = "0.1.0"
+version = "25.12.28"
 edition = "2024"
 
 [[bin]]
@@ -8,7 +8,7 @@ name = "sometime-calendar"
 path = "src/main.rs"
 
 [dependencies]
-sometime-core = { path = "../sometime-core" }
+sometime = { path = "../sometime" }
 chrono = { workspace = true }
 cosmic-text = "0.15.0"
 smithay-client-toolkit = { workspace = true }

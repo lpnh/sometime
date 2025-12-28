@@ -1,7 +1,7 @@
 use chrono::{Datelike, Local};
 
 use super::canvas::CalendarCanvas;
-use sometime_core::{App, Theme, Widget};
+use sometime::{App, Theme, Widget};
 
 pub struct Calendar {
     pub widget: Widget,
@@ -21,7 +21,7 @@ impl Calendar {
             self.canvas.primitives.clear();
             self.canvas
                 .draw_calendar(now.year(), now.month(), now.day(), self.theme);
-            sometime_core::update_surface(
+            sometime::update_surface(
                 &self.widget.layer,
                 &mut self.widget.pool,
                 &self.canvas.primitives,
