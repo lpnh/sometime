@@ -1,9 +1,10 @@
-[workspace]
-members = ["sometime", "sometime-clock", "sometime-calendar"]
-resolver = "2"
+[package]
+name = "sometime"
+version = "0.1.0"
+edition = "2024"
 
-[workspace.dependencies]
+[dependencies]
+chrono = { version = "0.4.43", features = ["serde"] }
+cosmic-text = "0.16.0"
 smithay-client-toolkit = "0.20.0"
 wayland-client = "0.31.12"
-chrono = { version = "0.4.43", features = ["serde"] }
-env_logger = "0.11.8"
