@@ -10,6 +10,6 @@ path = "src/main.rs"
 [dependencies]
 sometime = { path = "../sometime" }
 chrono = { workspace = true }
-cosmic-text = "0.15.0"
+cosmic-text = "0.16.0"
 smithay-client-toolkit = { workspace = true }
 wayland-client = { workspace = true }

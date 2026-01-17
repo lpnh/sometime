@@ -4,6 +4,6 @@ resolver = "2"
 
 [workspace.dependencies]
 smithay-client-toolkit = "0.20.0"
-wayland-client = "0.31.11"
-chrono = { version = "0.4.42", features = ["serde"] }
+wayland-client = "0.31.12"
+chrono = { version = "0.4.43", features = ["serde"] }
 env_logger = "0.11.8"
