@@ -69,6 +69,8 @@ where
 
     let shm = Shm::bind(&globals, &qh).expect("wl_shm not available");
 
+    let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
+
     let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     let surface = compositor.create_surface(&qh);
     let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell not available");
@@ -78,8 +80,6 @@ where
     layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
     layer.set_size(SIDE as u32, SIDE as u32);
     layer.commit();
-
-    let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
 
     let exit_on_release = std::env::args().any(|arg| arg == "--exit-on-release");
 

@@ -20,11 +20,11 @@ pub struct Widget {
     pub seat_state: SeatState,
     pub output_state: OutputState,
     pub shm: Shm,
-    pub exit: bool,
     pub pool: SlotPool,
     pub layer: LayerSurface,
-    pub keyboard: Option<WlKeyboard>,
     pub exit_on_release: bool,
+    pub keyboard: Option<WlKeyboard>,
+    pub exit: bool,
 }
 
 impl Widget {
@@ -47,11 +47,11 @@ impl Widget {
             seat_state: SeatState::new(globals, qh),
             output_state: OutputState::new(globals, qh),
             shm,
-            exit: false,
             pool,
             layer,
-            keyboard: None,
             exit_on_release,
+            keyboard: None,
+            exit: false,
         }
     }
 }
