@@ -81,9 +81,11 @@ where
 
     let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm).expect("Failed to create pool");
 
+    let exit_on_release = std::env::args().any(|arg| arg == "--exit-on-release");
+
     let mut app = T::new(
         Theme::default(),
-        Widget::new(&globals, &qh, shm, pool, layer),
+        Widget::new(&globals, &qh, shm, pool, layer, exit_on_release),
         T::new_canvas(SIDE),
     );
 

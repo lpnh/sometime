@@ -24,6 +24,7 @@ pub struct Widget {
     pub pool: SlotPool,
     pub layer: LayerSurface,
     pub keyboard: Option<WlKeyboard>,
+    pub exit_on_release: bool,
 }
 
 impl Widget {
@@ -33,6 +34,7 @@ impl Widget {
         shm: Shm,
         pool: SlotPool,
         layer: LayerSurface,
+        exit_on_release: bool,
     ) -> Self
     where
         T: Dispatch<WlOutput, OutputData> + 'static,
@@ -49,6 +51,7 @@ impl Widget {
             pool,
             layer,
             keyboard: None,
+            exit_on_release,
         }
     }
 }

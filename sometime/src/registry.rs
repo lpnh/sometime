@@ -215,6 +215,10 @@ macro_rules! impl_registry_handlers {
                 _: u32,
                 _: KeyEvent,
             ) {
+                // --exit-on-release
+                if self.widget.exit_on_release {
+                    self.widget.exit = true;
+                }
             }
 
             fn update_modifiers(
