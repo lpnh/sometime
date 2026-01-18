@@ -10,18 +10,30 @@ use smithay_client_toolkit::{
     shell::wlr_layer::LayerShell,
     shm::{Shm, slot::SlotPool},
 };
-use std::{env, sync::mpsc, time::Duration};
-use wayland_client::{Connection, globals::registry_queue_init};
+use std::{
+    env,
+    fs::{self, File, OpenOptions},
+    os::unix::io::AsRawFd,
+    path::PathBuf,
+    process,
+    sync::mpsc,
+    time::Duration,
+};
+use wayland_client::{Connection, globals};
 
 use sometime::{Canvas, SIDE, Sometime, View, ipc::IpcServer, widget::Widget};
 
 fn main() {
+    let Some(_lock) = try_singleton_lock() else {
+        process::exit(1);
+    };
+
     let exit_on_release = env::args()
         .next_back()
         .is_some_and(|arg| arg == "--exit-on-release");
 
     let conn = Connection::connect_to_env().expect("Failed to connect to Wayland");
-    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
+    let (globals, event_queue) = globals::registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     let shm = Shm::bind(&globals, &qh).expect("wl_shm not available");
@@ -91,6 +103,38 @@ fn main() {
             break;
         }
     }
+}
+
+struct SingletonLock {
+    _file: File, // holds the flock :3
+    path: PathBuf,
+}
+
+impl Drop for SingletonLock {
+    fn drop(&mut self) {
+        fs::remove_file(&self.path).expect("Failed to remove lock file");
+    }
+}
+
+fn try_singleton_lock() -> Option<SingletonLock> {
+    let xdg_runtime = env::var("XDG_RUNTIME_DIR").expect("XDG_RUNTIME_DIR not set");
+    let path = PathBuf::from(xdg_runtime).join("sometime.lock");
+
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .ok()?;
+
+    let ret = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+
+    if ret != 0 {
+        eprintln!("sometime-daemon is already running");
+        return None;
+    }
+
+    Some(SingletonLock { _file: file, path })
 }
 
 fn calc_next_tick() -> Duration {

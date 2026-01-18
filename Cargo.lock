@@ -566,6 +566,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cosmic-text",
+ "libc",
  "smithay-client-toolkit",
  "wayland-client",
 ]
