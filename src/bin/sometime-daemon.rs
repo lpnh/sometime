@@ -1,3 +1,4 @@
+use chrono::Local;
 use smithay_client_toolkit::{
     compositor::CompositorState,
     reexports::{
@@ -55,11 +56,11 @@ fn main() {
         .insert(loop_handle.clone())
         .unwrap();
 
-    let timer = Timer::from_duration(calc_next_tick());
+    let timer = Timer::from_duration(next_tick());
     loop_handle
-        .insert_source(timer, |_deadline, _timer_handle, data| {
-            data.is_happening = true;
-            TimeoutAction::ToDuration(calc_next_tick())
+        .insert_source(timer, |_deadline, _timer_handle, app| {
+            app.wake_up = true;
+            TimeoutAction::ToDuration(next_tick())
         })
         .expect("Failed to insert timer");
 
@@ -91,11 +92,11 @@ fn main() {
 
         while let Ok(view) = receiver.try_recv() {
             app.view = if app.view == view { View::Hidden } else { view };
-            app.is_happening = true;
+            app.wake_up = true;
         }
 
-        if app.is_happening {
-            app.is_happening = false;
+        if app.wake_up {
+            app.wake_up = false;
             app.draw(&qh);
         }
 
@@ -137,9 +138,7 @@ fn try_singleton_lock() -> Option<SingletonLock> {
     Some(SingletonLock { _file: file, path })
 }
 
-fn calc_next_tick() -> Duration {
-    use chrono::Local;
-    let now = Local::now();
-    let ms_in_current_sec = now.timestamp_subsec_millis();
-    Duration::from_millis((1000 - ms_in_current_sec) as u64)
+fn next_tick() -> Duration {
+    let ms_since_last_sec = Local::now().timestamp_subsec_millis();
+    Duration::from_millis((1000 - ms_since_last_sec) as u64)
 }

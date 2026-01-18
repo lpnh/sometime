@@ -11,7 +11,7 @@ pub struct Sometime {
     last_second: u32,
     last_calendar_day: u32,
     pub view: View,
-    pub is_happening: bool,
+    pub wake_up: bool,
     pub initialization_done: bool,
     pub exit_on_release: bool,
 }
@@ -25,7 +25,7 @@ impl Sometime {
             last_second: u32::MAX,
             last_calendar_day: u32::MAX,
             view: View::Hidden,
-            is_happening: false,
+            wake_up: false,
             initialization_done: false,
             exit_on_release,
         }
@@ -54,24 +54,29 @@ impl Sometime {
                 }
             }
             View::Hidden => {
+                // TODO: implement redraw state?
+                self.last_second = u32::MAX;
+                self.last_calendar_day = u32::MAX;
+                self.canvas.primitives.clear();
                 self.widget.destroy_layer();
             }
         }
     }
 
-    pub(crate) fn draw_clock(&mut self) {
+    pub fn draw_clock(&mut self) {
         let now = Local::now();
         let sec = now.second();
 
         if sec != self.last_second {
             self.last_second = sec;
+            self.canvas.primitives.clear();
             self.canvas
                 .draw_clock(now.hour(), now.minute(), now.second(), self.theme);
             self.update_surface();
         }
     }
 
-    pub(crate) fn draw_calendar(&mut self) {
+    pub fn draw_calendar(&mut self) {
         let now = Local::now();
         let day = now.day();
 
