@@ -7,25 +7,20 @@ use std::{
 };
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() != 2 {
-        eprintln!("Usage: sometime <clock|calendar>");
-        process::exit(1);
-    }
-
-    match args[1].as_str() {
-        "clock" | "calendar" | "status" => match send_command(&args[1]) {
+    if let Some(cmd) = env::args()
+        .nth(1)
+        .filter(|arg| matches!(arg.as_str(), "clock" | "calendar"))
+    {
+        match send_command(&cmd) {
             Ok(response) => println!("{}", response),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 process::exit(1);
             }
-        },
-        _ => {
-            eprintln!("Usage: sometime <clock|calendar>");
-            process::exit(1);
         }
+    } else {
+        eprintln!("Usage: sometime <clock|calendar>");
+        process::exit(1);
     }
 }
 

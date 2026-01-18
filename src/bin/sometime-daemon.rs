@@ -29,7 +29,7 @@ fn main() {
     };
 
     let exit_on_release = env::args()
-        .next_back()
+        .nth(1)
         .is_some_and(|arg| arg == "--exit-on-release");
 
     let conn = Connection::connect_to_env().expect("Failed to connect to Wayland");
