@@ -14,6 +14,8 @@ pub struct Sometime {
     pub wake_up: bool,
     pub initialization_done: bool,
     pub exit_on_release: bool,
+    last_view: Option<View>,
+    // TODO: we definitely need a proper state machine
 }
 
 impl Sometime {
@@ -28,11 +30,8 @@ impl Sometime {
             wake_up: false,
             initialization_done: false,
             exit_on_release,
+            last_view: None,
         }
-    }
-
-    pub fn init(&mut self) {
-        self.canvas.init(self.theme);
     }
 
     pub fn draw(&mut self, qh: &wayland_client::QueueHandle<Self>) {
@@ -69,9 +68,14 @@ impl Sometime {
 
         if sec != self.last_second {
             self.last_second = sec;
-            self.canvas.clear();
+
             self.canvas
-                .draw_clock(now.hour(), now.minute(), now.second(), self.theme);
+                .pixel_data
+                .copy_from_slice(&self.canvas.clock_bg_cache);
+            self.last_view = Some(View::Clock);
+
+            self.canvas
+                .draw_clock_hands(now.hour(), now.minute(), now.second(), self.theme);
             self.update_surface();
         }
     }
@@ -82,9 +86,16 @@ impl Sometime {
 
         if day != self.last_calendar_day {
             self.last_calendar_day = day;
-            self.canvas.clear();
+
+            if self.last_view != Some(View::Calendar) {
+                self.canvas
+                    .pixel_data
+                    .copy_from_slice(&self.canvas.calendar_bg_cache);
+                self.last_view = Some(View::Calendar);
+            }
+
             self.canvas
-                .draw_calendar(now.year(), now.month(), now.day(), self.theme);
+                .draw_calendar_fonts(now.year(), now.month(), now.day(), self.theme);
             self.update_surface();
         }
     }
@@ -93,7 +104,6 @@ impl Sometime {
         let Some(layer) = self.widget.layer.as_ref() else {
             return;
         };
-        let data = self.canvas.get_data();
         let side = self.canvas.side;
         let stride = side * 4;
 
@@ -103,7 +113,7 @@ impl Sometime {
             .create_buffer(side, side, stride, Format::Argb8888)
             .expect("create buffer");
 
-        surface.copy_from_slice(data);
+        surface.copy_from_slice(&self.canvas.pixel_data);
 
         let wl_surface = layer.wl_surface();
         wl_surface.damage_buffer(0, 0, side, side);

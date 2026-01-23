@@ -7,8 +7,9 @@ use super::theme::{Bgra, Theme};
 pub struct Canvas {
     pub side: i32,
     radius: f32,
-    pixel_data: Vec<u8>,
-    clock_cache: Vec<u8>,
+    pub pixel_data: Vec<u8>,
+    pub clock_bg_cache: Vec<u8>,
+    pub calendar_bg_cache: Vec<u8>,
     font_system: FontSystem,
     swash_cache: SwashCache,
 }
@@ -19,47 +20,24 @@ impl Canvas {
             side,
             radius: (side / 2) as f32,
             pixel_data: vec![0u8; (side * side * 4) as usize],
-            clock_cache: Vec::new(),
+            clock_bg_cache: Vec::new(),
+            calendar_bg_cache: Vec::new(),
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
         }
     }
 
     pub fn init(&mut self, theme: Theme) {
-        self.draw_face(theme);
-        self.clock_cache = self.pixel_data.clone();
+        self.clear();
+        self.draw_clock_bg(theme);
+        self.clock_bg_cache = self.pixel_data.clone();
+
+        self.clear();
+        self.draw_calendar_bg(theme);
+        self.calendar_bg_cache = self.pixel_data.clone();
     }
 
-    fn draw_face(&mut self, theme: Theme) {
-        let radius_sq = self.radius * self.radius;
-        let bg_radius_sq = (self.radius - 2.0) * (self.radius - 2.0);
-
-        for y in 0..self.side {
-            for x in 0..self.side {
-                let dx = x as f32 - self.radius;
-                let dy = y as f32 - self.radius;
-                let center_dist_sq = dx * dx + dy * dy;
-
-                // Center dot
-                let color = if center_dist_sq < 12.0 {
-                    theme.highlight
-                // Background
-                } else if center_dist_sq <= bg_radius_sq {
-                    theme.background
-                // Frame
-                } else if center_dist_sq <= radius_sq {
-                    theme.frame
-                } else {
-                    continue; // Outside circle
-                };
-
-                self.set_pixel(x, y, color);
-            }
-        }
-    }
-
-    pub fn draw_clock(&mut self, hour: u32, minute: u32, second: u32, theme: Theme) {
-        self.pixel_data.copy_from_slice(&self.clock_cache);
+    pub fn draw_clock_hands(&mut self, hour: u32, minute: u32, second: u32, theme: Theme) {
         self.draw_hour_hand(hour, minute, theme.primary);
         self.draw_minute_hand(minute, theme.primary);
         self.draw_second_hand(second, theme.secondary);
@@ -147,12 +125,36 @@ impl Canvas {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.pixel_data.fill(0);
+    fn draw_clock_bg(&mut self, theme: Theme) {
+        let radius_sq = self.radius * self.radius;
+        let bg_radius_sq = (self.radius - 2.0) * (self.radius - 2.0);
+
+        for y in 0..self.side {
+            for x in 0..self.side {
+                let dx = x as f32 - self.radius;
+                let dy = y as f32 - self.radius;
+                let center_dist_sq = dx * dx + dy * dy;
+
+                // Center dot
+                let color = if center_dist_sq < 12.0 {
+                    theme.highlight
+                // Background
+                } else if center_dist_sq <= bg_radius_sq {
+                    theme.background
+                // Frame
+                } else if center_dist_sq <= radius_sq {
+                    theme.frame
+                } else {
+                    continue; // Outside circle
+                };
+
+                self.set_pixel(x, y, color);
+            }
+        }
     }
 
-    pub fn get_data(&self) -> &[u8] {
-        &self.pixel_data
+    pub fn clear(&mut self) {
+        self.pixel_data.fill(0);
     }
 
     #[inline]
@@ -167,28 +169,20 @@ impl Canvas {
         dx * dx + dy * dy
     }
 
-    pub fn draw_calendar(&mut self, year: i32, month: u32, today: u32, theme: Theme) {
+    pub fn draw_calendar_fonts(&mut self, year: i32, month: u32, today: u32, theme: Theme) {
         // Calculate grid dimensions
         let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
         let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
         let days_in_month = Self::days_in_month(year, month);
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
 
-        // Base spacing
-        let padding = (self.side as f32 / 32.0).ceil() as i32;
-        let frame_thickness = 2;
-
         // Grid layout with 7 columns
-        let cell_width = ((self.side - 2 * padding) / 7) as f32;
-        let cell_height = (cell_width * 0.7).ceil() as i32;
+        let (padding, cell_width, cell_height, month_height) = self.calendar_layout();
 
-        // Font sizes
-        let month_font_size = (cell_width * 0.5).ceil();
         let weekday_font_size = (cell_width * 0.4).ceil();
         let day_font_size = (cell_width * 0.5).ceil();
 
         let month_header = first_of_month.format("%B %Y").to_string();
-        let month_height = month_font_size.ceil() as i32;
 
         // Calendar dimensions
         let total_width = cell_width as i32 * 7 + 2 * padding;
@@ -198,16 +192,6 @@ impl Canvas {
         let rect_x = (self.side - total_width) / 2;
         let rect_y = (self.side - total_height) / 2;
 
-        // Draw background frame
-        self.draw_calendar_bg(
-            rect_x,
-            rect_y,
-            total_width,
-            total_height,
-            frame_thickness,
-            theme,
-        );
-
         // Draw content relative to top-left, with padding
         let mut content_y = rect_y + padding;
 
@@ -216,7 +200,7 @@ impl Canvas {
             &month_header,
             rect_x + padding,
             content_y,
-            month_font_size,
+            month_height as f32,
             total_width as f32 - 2.0 * padding as f32,
             theme.primary,
         );
@@ -296,24 +280,31 @@ impl Canvas {
         }
     }
 
-    fn draw_calendar_bg(
-        &mut self,
-        x: i32,
-        y: i32,
-        width: i32,
-        height: i32,
-        frame_thickness: i32,
-        theme: Theme,
-    ) {
+    fn draw_calendar_bg(&mut self, theme: Theme) {
+        // Grid layout with 7 columns
+        let (padding, cell_width, cell_height, month_height) = self.calendar_layout();
+        let frame_thickness = 2;
+
+        // Calendar dimensions
+        let max_rows_needed = 6;
+        let width = cell_width as i32 * 7 + 2 * padding;
+        let height = 3 * padding + month_height + cell_height + max_rows_needed * cell_height;
+
+        // Center on canvas
+        let x = (self.side - width) / 2;
+        let y = (self.side - height) / 2;
+
         // Draw frame
         self.fill_rect(x, y, width, height, theme.frame);
 
         // Draw background
-        let inner_x = x + frame_thickness;
-        let inner_y = y + frame_thickness;
-        let inner_w = width - 2 * frame_thickness;
-        let inner_h = height - 2 * frame_thickness;
-        self.fill_rect(inner_x, inner_y, inner_w, inner_h, theme.background);
+        self.fill_rect(
+            x + frame_thickness,
+            y + frame_thickness,
+            width - 2 * frame_thickness,
+            height - 2 * frame_thickness,
+            theme.background,
+        );
     }
 
     fn fill_rect(&mut self, x: i32, y: i32, width: i32, height: i32, color: Bgra) {
@@ -324,6 +315,15 @@ impl Canvas {
                 }
             }
         }
+    }
+
+    fn calendar_layout(&self) -> (i32, f32, i32, i32) {
+        let padding = (self.side as f32 / 32.0).ceil() as i32;
+        let width = ((self.side - 2 * padding) / 7) as f32;
+        let height = (width * 0.7).ceil() as i32;
+        let month_height = (width * 0.5).ceil() as i32;
+
+        (padding, width, height, month_height)
     }
 
     fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, width: f32, color: Bgra) {

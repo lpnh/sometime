@@ -78,7 +78,7 @@ impl LayerShellHandler for Sometime {
         _serial: u32,
     ) {
         self.initialization_done = true;
-        self.init();
+        self.canvas.init(self.theme);
         match self.view {
             View::Clock => self.draw_clock(),
             View::Calendar => self.draw_calendar(),
