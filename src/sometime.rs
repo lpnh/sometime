@@ -57,7 +57,7 @@ impl Sometime {
                 // TODO: implement redraw state?
                 self.last_second = u32::MAX;
                 self.last_calendar_day = u32::MAX;
-                self.canvas.primitives.clear();
+                self.canvas.clear();
                 self.widget.destroy_layer();
             }
         }
@@ -69,7 +69,7 @@ impl Sometime {
 
         if sec != self.last_second {
             self.last_second = sec;
-            self.canvas.primitives.clear();
+            self.canvas.clear();
             self.canvas
                 .draw_clock(now.hour(), now.minute(), now.second(), self.theme);
             self.update_surface();
@@ -82,7 +82,7 @@ impl Sometime {
 
         if day != self.last_calendar_day {
             self.last_calendar_day = day;
-            self.canvas.primitives.clear();
+            self.canvas.clear();
             self.canvas
                 .draw_calendar(now.year(), now.month(), now.day(), self.theme);
             self.update_surface();
@@ -93,8 +93,8 @@ impl Sometime {
         let Some(layer) = self.widget.layer.as_ref() else {
             return;
         };
-        let data = self.canvas.primitives.get_data();
-        let side = self.canvas.primitives.side;
+        let data = self.canvas.get_data();
+        let side = self.canvas.side;
         let stride = side * 4;
 
         let (buffer, surface) = self

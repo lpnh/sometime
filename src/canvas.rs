@@ -2,10 +2,12 @@ use chrono::{Datelike, Duration, NaiveDate};
 use cosmic_text::{Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 use std::f32::consts::PI;
 
-use crate::{canvas_primitives::CanvasPrimitives, theme::Bgra, theme::Theme};
+use super::theme::{Bgra, Theme};
 
 pub struct Canvas {
-    pub primitives: CanvasPrimitives,
+    pub side: i32,
+    radius: f32,
+    pixel_data: Vec<u8>,
     clock_cache: Vec<u8>,
     font_system: FontSystem,
     swash_cache: SwashCache,
@@ -14,7 +16,9 @@ pub struct Canvas {
 impl Canvas {
     pub fn new(side: i32) -> Self {
         Self {
-            primitives: CanvasPrimitives::new(side),
+            side,
+            radius: (side / 2) as f32,
+            pixel_data: vec![0u8; (side * side * 4) as usize],
             clock_cache: Vec::new(),
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
@@ -23,19 +27,17 @@ impl Canvas {
 
     pub fn init(&mut self, theme: Theme) {
         self.draw_face(theme);
-        self.clock_cache = self.primitives.pixel_data.clone();
+        self.clock_cache = self.pixel_data.clone();
     }
 
     fn draw_face(&mut self, theme: Theme) {
-        let radius = self.primitives.radius;
-        let side = self.primitives.side;
-        let radius_sq = radius * radius;
-        let bg_radius_sq = (radius - 2.0) * (radius - 2.0);
+        let radius_sq = self.radius * self.radius;
+        let bg_radius_sq = (self.radius - 2.0) * (self.radius - 2.0);
 
-        for y in 0..side {
-            for x in 0..side {
-                let dx = x as f32 - radius;
-                let dy = y as f32 - radius;
+        for y in 0..self.side {
+            for x in 0..self.side {
+                let dx = x as f32 - self.radius;
+                let dy = y as f32 - self.radius;
                 let center_dist_sq = dx * dx + dy * dy;
 
                 // Center dot
@@ -51,15 +53,13 @@ impl Canvas {
                     continue; // Outside circle
                 };
 
-                self.primitives.set_pixel(x, y, color);
+                self.set_pixel(x, y, color);
             }
         }
     }
 
     pub fn draw_clock(&mut self, hour: u32, minute: u32, second: u32, theme: Theme) {
-        self.primitives
-            .pixel_data
-            .copy_from_slice(&self.clock_cache);
+        self.pixel_data.copy_from_slice(&self.clock_cache);
         self.draw_hour_hand(hour, minute, theme.primary);
         self.draw_minute_hand(minute, theme.primary);
         self.draw_second_hand(second, theme.secondary);
@@ -87,13 +87,11 @@ impl Canvas {
         thickness: f32,
         color: Bgra,
     ) {
-        let radius = self.primitives.radius;
-        let side = self.primitives.side;
-        let end_x = radius + (radius * distance) * angle.cos();
-        let end_y = radius + (radius * distance) * angle.sin();
+        let end_x = self.radius + (self.radius * distance) * angle.cos();
+        let end_y = self.radius + (self.radius * distance) * angle.sin();
 
-        let dx = end_x - radius;
-        let dy = end_y - radius;
+        let dx = end_x - self.radius;
+        let dy = end_y - self.radius;
         let steps = dx.abs().max(dy.abs()) as i32;
 
         if steps == 0 {
@@ -113,8 +111,8 @@ impl Canvas {
         let center_gap_radius = 4;
         let skip_steps = center_gap_radius + search_radius;
 
-        let mut x = radius + x_inc * skip_steps as f32;
-        let mut y = radius + y_inc * skip_steps as f32;
+        let mut x = self.radius + x_inc * skip_steps as f32;
+        let mut y = self.radius + y_inc * skip_steps as f32;
 
         for _ in skip_steps..=steps {
             for dy_offset in -search_radius..=search_radius {
@@ -122,9 +120,8 @@ impl Canvas {
                     let px = (x + dx_offset as f32).round() as i32;
                     let py = (y + dy_offset as f32).round() as i32;
 
-                    if px >= 0 && px < side && py >= 0 && py < side {
-                        let squared_dist =
-                            CanvasPrimitives::squared_distance(x, y, px as f32, py as f32);
+                    if px >= 0 && px < self.side && py >= 0 && py < self.side {
+                        let squared_dist = Self::squared_distance(x, y, px as f32, py as f32);
 
                         // Fade out at the edges
                         let alpha = if squared_dist <= inner_radius_sq {
@@ -136,9 +133,9 @@ impl Canvas {
                             continue;
                         };
 
-                        CanvasPrimitives::alpha_blending(
-                            &mut self.primitives.pixel_data,
-                            CanvasPrimitives::pixel_idx(side, px, py),
+                        Self::alpha_blending(
+                            &mut self.pixel_data,
+                            Self::pixel_idx(self.side, px, py),
                             color,
                             (alpha * 255.0) as u8,
                         );
@@ -150,6 +147,26 @@ impl Canvas {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.pixel_data.fill(0);
+    }
+
+    pub fn get_data(&self) -> &[u8] {
+        &self.pixel_data
+    }
+
+    #[inline]
+    fn pixel_idx(side: i32, x: i32, y: i32) -> usize {
+        ((y * side + x) * 4) as usize
+    }
+
+    #[inline]
+    fn squared_distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        dx * dx + dy * dy
+    }
+
     pub fn draw_calendar(&mut self, year: i32, month: u32, today: u32, theme: Theme) {
         // Calculate grid dimensions
         let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
@@ -157,14 +174,12 @@ impl Canvas {
         let days_in_month = Self::days_in_month(year, month);
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
 
-        let side = self.primitives.side;
-
         // Base spacing
-        let padding = (side as f32 / 32.0).ceil() as i32;
+        let padding = (self.side as f32 / 32.0).ceil() as i32;
         let frame_thickness = 2;
 
         // Grid layout with 7 columns
-        let cell_width = ((side - 2 * padding) / 7) as f32;
+        let cell_width = ((self.side - 2 * padding) / 7) as f32;
         let cell_height = (cell_width * 0.7).ceil() as i32;
 
         // Font sizes
@@ -180,8 +195,8 @@ impl Canvas {
         let total_height = 3 * padding + month_height + cell_height + rows_needed * cell_height;
 
         // Center on canvas
-        let rect_x = (side - total_width) / 2;
-        let rect_y = (side - total_height) / 2;
+        let rect_x = (self.side - total_width) / 2;
+        let rect_y = (self.side - total_height) / 2;
 
         // Draw background frame
         self.draw_calendar_bg(
@@ -291,15 +306,24 @@ impl Canvas {
         theme: Theme,
     ) {
         // Draw frame
-        self.primitives.fill_rect(x, y, width, height, theme.frame);
+        self.fill_rect(x, y, width, height, theme.frame);
 
         // Draw background
         let inner_x = x + frame_thickness;
         let inner_y = y + frame_thickness;
         let inner_w = width - 2 * frame_thickness;
         let inner_h = height - 2 * frame_thickness;
-        self.primitives
-            .fill_rect(inner_x, inner_y, inner_w, inner_h, theme.background);
+        self.fill_rect(inner_x, inner_y, inner_w, inner_h, theme.background);
+    }
+
+    fn fill_rect(&mut self, x: i32, y: i32, width: i32, height: i32, color: Bgra) {
+        for py in y..(y + height).min(self.side) {
+            for px in x..(x + width).min(self.side) {
+                if px >= 0 && py >= 0 && px < self.side && py < self.side {
+                    self.set_pixel(px, py, color);
+                }
+            }
+        }
     }
 
     fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, width: f32, color: Bgra) {
@@ -308,8 +332,8 @@ impl Canvas {
         let text_color = Color::rgba(color.r(), color.g(), color.b(), color.a());
 
         // Capture needed fields to avoid borrow issues
-        let side = self.primitives.side;
-        let pixel_data = &mut self.primitives.pixel_data;
+        let side = self.side;
+        let pixel_data = &mut self.pixel_data;
 
         buffer.draw(
             &mut self.font_system,
@@ -320,9 +344,9 @@ impl Canvas {
                 let py = y + gy;
 
                 if px >= 0 && px < side && py >= 0 && py < side {
-                    CanvasPrimitives::alpha_blending(
+                    Self::alpha_blending(
                         pixel_data,
-                        CanvasPrimitives::pixel_idx(side, px, py),
+                        Self::pixel_idx(side, px, py),
                         color,
                         glyph_color.a(),
                     );
@@ -332,10 +356,9 @@ impl Canvas {
     }
 
     fn create_drawing_buffer(&mut self, text: &str, font_size: f32, width: f32) -> Buffer {
-        let side = self.primitives.side;
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_size(&mut self.font_system, Some(width), Some(side as f32));
+        buffer.set_size(&mut self.font_system, Some(width), Some(self.side as f32));
         buffer.set_text(
             &mut self.font_system,
             text,
@@ -355,5 +378,29 @@ impl Canvas {
         };
         let next_month = NaiveDate::from_ymd_opt(ny, nm, 1).expect("days_in_month: invalid date");
         (next_month - Duration::days(1)).day() as i32
+    }
+
+    fn set_pixel(&mut self, x: i32, y: i32, color: Bgra) {
+        let index = Self::pixel_idx(self.side, x, y);
+        if index + 3 < self.pixel_data.len() {
+            self.pixel_data[index..index + 4].copy_from_slice(color.as_ref());
+        }
+    }
+
+    fn alpha_blending(pxl_data: &mut [u8], idx: usize, color: Bgra, alpha: u8) {
+        if idx + 3 >= pxl_data.len() {
+            return;
+        }
+
+        let inv_alpha = 255 - alpha;
+
+        pxl_data[idx] = Self::blend_color(color.b(), alpha, pxl_data[idx], inv_alpha);
+        pxl_data[idx + 1] = Self::blend_color(color.g(), alpha, pxl_data[idx + 1], inv_alpha);
+        pxl_data[idx + 2] = Self::blend_color(color.r(), alpha, pxl_data[idx + 2], inv_alpha);
+    }
+
+    #[inline]
+    fn blend_color(src: u8, alpha: u8, dst: u8, inv_alpha: u8) -> u8 {
+        ((src as u16 * alpha as u16 + dst as u16 * inv_alpha as u16) >> 8) as u8
     }
 }
