@@ -17,7 +17,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
 };
 
-use crate::{Sometime, View};
+use crate::{Sometime, State};
 
 impl CompositorHandler for Sometime {
     fn scale_factor_changed(
@@ -77,12 +77,8 @@ impl LayerShellHandler for Sometime {
         _configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        self.initialization_done = true;
-        self.canvas.init(self.theme);
-        match self.view {
-            View::Clock => self.draw_clock(),
-            View::Calendar => self.draw_calendar(),
-            View::Hidden => {}
+        if let State::Init(view) = self.state {
+            self.wake_up(view);
         }
     }
 }
@@ -187,7 +183,7 @@ impl KeyboardHandler for Sometime {
         if self.exit_on_release {
             self.widget.exit = true;
         } else {
-            self.view = View::Hidden;
+            self.sleep();
         }
     }
 

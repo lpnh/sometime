@@ -22,7 +22,7 @@ use std::{
 };
 use wayland_client::{Connection, globals};
 
-use sometime::{Canvas, SIDE, Sometime, View, ipc::IpcServer, widget::Widget};
+use sometime::{Canvas, SIDE, Sometime, State, ipc::IpcServer, widget::Widget};
 
 fn main() {
     let Some(_lock) = try_singleton_lock() else {
@@ -45,7 +45,6 @@ fn main() {
     let widget = Widget::new(&globals, &qh, shm, pool, compositor, layer_shell);
 
     let mut app = Sometime::new(widget, Canvas::new(SIDE), exit_on_release);
-    app.widget.create_layer_surface(&qh, "sometime");
 
     let mut event_loop: EventLoop<Sometime> =
         EventLoop::try_new().expect("Failed to initialize event loop");
@@ -59,7 +58,9 @@ fn main() {
     let timer = Timer::from_duration(next_tick());
     loop_handle
         .insert_source(timer, |_deadline, _timer_handle, app| {
-            app.wake_up = true;
+            if let State::Awake(view) = app.state {
+                app.request_redraw(view);
+            }
             TimeoutAction::ToDuration(next_tick())
         })
         .expect("Failed to insert timer");
@@ -90,15 +91,16 @@ fn main() {
             .dispatch(Some(Duration::from_millis(100)), &mut app)
             .unwrap();
 
-        while let Ok(view) = receiver.try_recv() {
-            app.view = if app.view == view { View::Hidden } else { view };
-            app.wake_up = true;
+        // handle `sometime <clock|calendar>` command
+        while let Ok(new_view) = receiver.try_recv() {
+            match app.state {
+                State::Sleep => app.init(new_view, &qh),
+                State::Awake(view) if view == new_view => app.sleep(), // toggle
+                _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
+            }
         }
 
-        if app.wake_up {
-            app.wake_up = false;
-            app.draw(&qh);
-        }
+        app.consume_redraw();
 
         if app.widget.exit {
             break;
