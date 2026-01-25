@@ -1,4 +1,5 @@
 mod canvas;
+pub mod flock;
 pub mod ipc;
 mod registry;
 mod theme;
@@ -126,13 +127,13 @@ impl Sometime {
             .widget
             .pool
             .create_buffer(side, side, stride, Format::Argb8888)
-            .expect("create buffer");
+            .unwrap();
 
         surface.copy_from_slice(&self.canvas.pixel_data);
 
         let wl_surface = layer.wl_surface();
         wl_surface.damage_buffer(0, 0, side, side);
-        buffer.attach_to(wl_surface).expect("buffer attach");
+        buffer.attach_to(wl_surface).unwrap();
         layer.commit();
     }
 }
