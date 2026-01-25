@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::{self, File, OpenOptions},
     os::unix::io::AsRawFd,
     path::PathBuf,
@@ -17,7 +16,7 @@ impl Drop for Flock {
 }
 
 pub fn try_acquire_daemon_lock() -> anyhow::Result<Flock> {
-    let xdg_runtime = env::var("XDG_RUNTIME_DIR")?;
+    let xdg_runtime = std::env::var("XDG_RUNTIME_DIR")?;
     let path = PathBuf::from(xdg_runtime).join("sometime.lock");
 
     let file = OpenOptions::new()

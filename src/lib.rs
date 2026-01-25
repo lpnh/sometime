@@ -1,11 +1,13 @@
 mod canvas;
+mod command;
 pub mod flock;
 pub mod ipc;
 mod registry;
 mod theme;
-pub mod wayland;
+mod wayland;
 
 pub use canvas::Canvas;
+pub use command::Command;
 pub use theme::{Bgra, Theme};
 pub use wayland::Wayland;
 

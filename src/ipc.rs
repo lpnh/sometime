@@ -1,63 +1,64 @@
 use std::{
-    env,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
     path::PathBuf,
 };
 
-use crate::View;
+use crate::Command;
 
-pub fn setup_ipc_listener() -> std::io::Result<UnixListener> {
-    let socket_path = get_socket_path();
+// === daemon ===
+
+pub fn setup_listener() -> anyhow::Result<UnixListener> {
+    let socket_path = socket_path()?;
 
     if socket_path.exists() {
         std::fs::remove_file(&socket_path)?;
     }
 
-    UnixListener::bind(&socket_path)
+    Ok(UnixListener::bind(&socket_path)?)
 }
 
-pub fn get_socket_path() -> PathBuf {
-    let xdg_runtime = env::var("XDG_RUNTIME_DIR").expect("XDG_RUNTIME_DIR not set");
-    PathBuf::from(xdg_runtime).join("sometime.sock")
-}
-
-pub fn cleanup_socket() {
-    let socket_path = get_socket_path();
-    let _ = std::fs::remove_file(&socket_path);
-}
-
-/// Parse incoming client request and return a command if valid
-pub fn handle_client(stream: UnixStream) -> Option<View> {
+pub fn recv_command(stream: UnixStream) -> anyhow::Result<Command> {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
 
-    if reader.read_line(&mut line).is_err() || line.trim().is_empty() {
-        return None;
-    }
+    reader.read_line(&mut line)?;
 
     let line = line.trim();
 
-    let command = match line {
-        "clock" => Some(View::Clock),
-        "calendar" => Some(View::Calendar),
-        _ => {
-            let response = format!("Unknown command: {}", line);
+    match line.parse() {
+        Ok(command) => {
             let mut stream = reader.into_inner();
-            stream
-                .write_all(response.as_bytes())
-                .expect("Failed to write response");
-            stream.flush().expect("Failed to flush response");
-            return None;
+            stream.write_all(b"is happening")?;
+            stream.flush()?;
+            Ok(command)
         }
-    };
+        Err(e) => Err(anyhow::anyhow!("{}", e)),
+    }
+}
 
-    // Send acknowledgment
-    let mut stream = reader.into_inner();
-    stream
-        .write_all(b"is happening")
-        .expect("Failed to write response");
-    stream.flush().expect("Failed to flush response");
+pub fn unlink_socket() -> anyhow::Result<()> {
+    let socket_path = socket_path()?;
+    std::fs::remove_file(&socket_path)?;
+    Ok(())
+}
 
-    command
+// === cli ===
+
+pub fn invoke_daemon(command: Command) -> anyhow::Result<String> {
+    let socket_path = socket_path()?;
+    let mut stream = UnixStream::connect(&socket_path)?;
+    stream.write_all(command.to_string().as_bytes())?;
+    stream.write_all(b"\n")?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+    Ok(response.trim().to_string())
+}
+
+// === shared ===
+
+fn socket_path() -> anyhow::Result<PathBuf> {
+    let xdg_runtime = std::env::var("XDG_RUNTIME_DIR")?;
+    Ok(PathBuf::from(xdg_runtime).join("sometime.sock"))
 }

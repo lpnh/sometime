@@ -39,14 +39,15 @@ fn main() -> anyhow::Result<()> {
         })
         .ok();
 
-    let ipc_listener = ipc::setup_ipc_listener()?;
+    let ipc_listener = ipc::setup_listener()?;
     let event_source = Generic::new(ipc_listener, Interest::READ, Mode::Level);
     loop_handle.insert_source(event_source, move |readiness, listener, app| {
         if readiness.readable
             && let Ok((stream, _)) = listener.accept()
-            && let Some(new_view) = ipc::handle_client(stream)
+            && let Ok(cmd) = ipc::recv_command(stream)
         {
             // handle `sometime <clock|calendar>` command
+            let new_view = cmd.into();
             match app.state {
                 State::Sleep => app.init(new_view, &qh),
                 State::Awake(view) if view == new_view => app.sleep(), // toggle
@@ -66,7 +67,7 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    ipc::cleanup_socket();
+    ipc::unlink_socket()?;
 
     Ok(())
 }
