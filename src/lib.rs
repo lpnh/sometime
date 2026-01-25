@@ -108,7 +108,7 @@ impl Sometime {
                     self.canvas
                         .draw_calendar_fonts(now.year(), now.month(), now.day(), self.theme);
 
-                    self.last_day = now.day()
+                    self.last_day = now.day();
                 }
             }
 
@@ -117,23 +117,21 @@ impl Sometime {
     }
 
     fn update_surface(&mut self) {
-        let Some(layer) = self.widget.layer.as_ref() else {
-            return;
-        };
         let side = self.canvas.side;
         let stride = side * 4;
 
-        let (buffer, surface) = self
-            .widget
-            .pool
-            .create_buffer(side, side, stride, Format::Argb8888)
-            .unwrap();
+        if let Some(layer) = self.widget.layer.as_ref()
+            && let Ok((buffer, surface)) =
+                self.widget
+                    .pool
+                    .create_buffer(side, side, stride, Format::Argb8888)
+        {
+            surface.copy_from_slice(&self.canvas.pixel_data);
 
-        surface.copy_from_slice(&self.canvas.pixel_data);
-
-        let wl_surface = layer.wl_surface();
-        wl_surface.damage_buffer(0, 0, side, side);
-        buffer.attach_to(wl_surface).unwrap();
-        layer.commit();
+            let wl_surface = layer.wl_surface();
+            wl_surface.damage_buffer(0, 0, side, side);
+            buffer.attach_to(wl_surface).ok();
+            layer.commit();
+        }
     }
 }

@@ -12,27 +12,25 @@ pub struct Flock {
 
 impl Drop for Flock {
     fn drop(&mut self) {
-        fs::remove_file(&self.path).unwrap();
+        fs::remove_file(&self.path).ok();
     }
 }
 
-pub fn try_acquire_daemon_lock() -> Option<Flock> {
-    let xdg_runtime = env::var("XDG_RUNTIME_DIR").unwrap();
+pub fn try_acquire_daemon_lock() -> anyhow::Result<Flock> {
+    let xdg_runtime = env::var("XDG_RUNTIME_DIR")?;
     let path = PathBuf::from(xdg_runtime).join("sometime.lock");
 
     let file = OpenOptions::new()
         .create(true)
         .truncate(true)
         .write(true)
-        .open(&path)
-        .ok()?;
+        .open(&path)?;
 
     let ret = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
 
-    if ret != 0 {
-        eprintln!("sometime-daemon is already running");
-        return None;
+    if ret == 0 {
+        Ok(Flock { _file: file, path })
+    } else {
+        anyhow::bail!("sometime-daemon is already running")
     }
-
-    Some(Flock { _file: file, path })
 }
