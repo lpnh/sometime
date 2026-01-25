@@ -17,7 +17,6 @@ use std::{
     os::unix::io::AsRawFd,
     path::PathBuf,
     process,
-    sync::mpsc,
     time::Duration,
 };
 use wayland_client::{Connection, globals};
@@ -63,42 +62,33 @@ fn main() {
             }
             TimeoutAction::ToDuration(next_tick())
         })
-        .expect("Failed to insert timer");
+        .unwrap();
 
     let ipc_server = IpcServer::new().expect("Failed to create IPC server");
-    let (sender, receiver) = mpsc::channel();
-
     let event_source = Generic::new(
         ipc_server.listener().try_clone().unwrap(),
         Interest::READ,
         Mode::Level,
     );
-
     loop_handle
-        .insert_source(event_source, move |readiness, listener, _app| {
+        .insert_source(event_source, move |readiness, listener, app| {
             if readiness.readable
                 && let Ok((stream, _)) = listener.accept()
-                && let Some(command) = IpcServer::handle_client(stream)
+                && let Some(new_view) = IpcServer::handle_client(stream)
             {
-                sender.send(command).expect("Failed to send command");
+                // handle `sometime <clock|calendar>` command
+                match app.state {
+                    State::Sleep => app.init(new_view, &qh),
+                    State::Awake(view) if view == new_view => app.sleep(), // toggle
+                    _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
+                }
             }
             Ok(PostAction::Continue)
         })
-        .expect("Failed to insert socket source");
+        .unwrap();
 
     loop {
-        event_loop
-            .dispatch(Some(Duration::from_millis(100)), &mut app)
-            .unwrap();
-
-        // handle `sometime <clock|calendar>` command
-        while let Ok(new_view) = receiver.try_recv() {
-            match app.state {
-                State::Sleep => app.init(new_view, &qh),
-                State::Awake(view) if view == new_view => app.sleep(), // toggle
-                _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
-            }
-        }
+        event_loop.dispatch(None, &mut app).unwrap();
 
         app.consume_redraw();
 
