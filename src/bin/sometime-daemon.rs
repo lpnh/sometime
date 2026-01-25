@@ -1,20 +1,14 @@
 use chrono::Local;
-use smithay_client_toolkit::{
-    compositor::CompositorState,
-    reexports::{
-        calloop::{
-            EventLoop, Interest, Mode, PostAction, generic::Generic, timer::TimeoutAction,
-            timer::Timer,
-        },
-        calloop_wayland_source::WaylandSource,
+use smithay_client_toolkit::reexports::{
+    calloop::{
+        EventLoop, Interest, Mode, PostAction, generic::Generic, timer::TimeoutAction, timer::Timer,
     },
-    shell::wlr_layer::LayerShell,
-    shm::{Shm, slot::SlotPool},
+    calloop_wayland_source::WaylandSource,
 };
 use std::{env, time::Duration};
 use wayland_client::{Connection, globals};
 
-use sometime::{Canvas, SIDE, Sometime, State, flock, ipc, widget::Widget};
+use sometime::{Sometime, State, Wayland, flock, ipc};
 
 fn main() -> anyhow::Result<()> {
     let _lock = flock::try_acquire_daemon_lock()?;
@@ -27,14 +21,8 @@ fn main() -> anyhow::Result<()> {
     let (globals, event_queue) = globals::registry_queue_init(&conn)?;
     let qh = event_queue.handle();
 
-    let shm = Shm::bind(&globals, &qh)?;
-    let pool = SlotPool::new((SIDE * SIDE * 4) as usize, &shm)?;
-    let compositor = CompositorState::bind(&globals, &qh)?;
-    let layer_shell = LayerShell::bind(&globals, &qh)?;
-
-    let widget = Widget::new(&globals, &qh, shm, pool, compositor, layer_shell);
-
-    let mut app = Sometime::new(widget, Canvas::new(SIDE), exit_on_release);
+    let wl = Wayland::new(&globals, &qh)?;
+    let mut app = Sometime::new(wl, exit_on_release);
 
     let mut event_loop = EventLoop::try_new()?;
     let loop_handle = event_loop.handle();
@@ -73,7 +61,7 @@ fn main() -> anyhow::Result<()> {
 
         app.consume_redraw();
 
-        if app.widget.exit {
+        if app.wl.exit {
             break;
         }
     }

@@ -13,12 +13,12 @@ use wayland_client::{QueueHandle, globals::GlobalList, protocol::wl_keyboard::Wl
 
 use crate::{SIDE, Sometime};
 
-pub struct Widget {
+pub struct Wayland {
     pub registry_state: RegistryState,
     pub seat_state: SeatState,
     pub output_state: OutputState,
-    pub shm: Shm,
     pub pool: SlotPool,
+    pub shm: Shm,
     pub compositor: CompositorState,
     pub layer_shell: LayerShell,
     pub layer: Option<LayerSurface>,
@@ -26,27 +26,22 @@ pub struct Widget {
     pub exit: bool,
 }
 
-impl Widget {
-    pub fn new(
-        globals: &GlobalList,
-        qh: &QueueHandle<Sometime>,
-        shm: Shm,
-        pool: SlotPool,
-        compositor: CompositorState,
-        layer_shell: LayerShell,
-    ) -> Self {
-        Self {
+impl Wayland {
+    pub fn new(globals: &GlobalList, qh: &QueueHandle<Sometime>) -> anyhow::Result<Self> {
+        let shm = Shm::bind(globals, qh)?;
+
+        Ok(Self {
             registry_state: RegistryState::new(globals),
             seat_state: SeatState::new(globals, qh),
             output_state: OutputState::new(globals, qh),
+            pool: SlotPool::new((SIDE * SIDE * 4) as usize, &shm)?,
             shm,
-            pool,
-            compositor,
-            layer_shell,
+            compositor: CompositorState::bind(globals, qh)?,
+            layer_shell: LayerShell::bind(globals, qh)?,
             layer: None,
             keyboard: None,
             exit: false,
-        }
+        })
     }
 
     pub fn destroy_layer(&mut self) {

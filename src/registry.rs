@@ -57,7 +57,7 @@ impl CompositorHandler for Sometime {
 
 impl OutputHandler for Sometime {
     fn output_state(&mut self) -> &mut OutputState {
-        &mut self.widget.output_state
+        &mut self.wl.output_state
     }
     fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
     fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
@@ -66,7 +66,7 @@ impl OutputHandler for Sometime {
 
 impl LayerShellHandler for Sometime {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
-        self.widget.exit = true;
+        self.wl.exit = true;
     }
 
     fn configure(
@@ -85,7 +85,7 @@ impl LayerShellHandler for Sometime {
 
 impl SeatHandler for Sometime {
     fn seat_state(&mut self) -> &mut SeatState {
-        &mut self.widget.seat_state
+        &mut self.wl.seat_state
     }
 
     fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
@@ -97,13 +97,13 @@ impl SeatHandler for Sometime {
         seat: wl_seat::WlSeat,
         capability: Capability,
     ) {
-        if capability == Capability::Keyboard && self.widget.keyboard.is_none() {
+        if capability == Capability::Keyboard && self.wl.keyboard.is_none() {
             let keyboard = self
-                .widget
+                .wl
                 .seat_state
                 .get_keyboard(qh, &seat, None)
                 .expect("Failed to create keyboard");
-            self.widget.keyboard = Some(keyboard);
+            self.wl.keyboard = Some(keyboard);
         }
     }
 
@@ -114,8 +114,8 @@ impl SeatHandler for Sometime {
         _: wl_seat::WlSeat,
         capability: Capability,
     ) {
-        if capability == Capability::Keyboard && self.widget.keyboard.is_some() {
-            self.widget.keyboard.take().unwrap().release();
+        if capability == Capability::Keyboard && self.wl.keyboard.is_some() {
+            self.wl.keyboard.take().unwrap().release();
         }
     }
 
@@ -157,7 +157,7 @@ impl KeyboardHandler for Sometime {
 
         // Exit on `esc` or `q`
         if pressed_key == Keysym::Escape || pressed_key == Keysym::q {
-            self.widget.exit = true;
+            self.wl.exit = true;
         }
     }
 
@@ -181,7 +181,7 @@ impl KeyboardHandler for Sometime {
     ) {
         // --exit-on-release
         if self.exit_on_release {
-            self.widget.exit = true;
+            self.wl.exit = true;
         } else {
             self.sleep();
         }
@@ -202,7 +202,7 @@ impl KeyboardHandler for Sometime {
 
 impl ShmHandler for Sometime {
     fn shm_state(&mut self) -> &mut Shm {
-        &mut self.widget.shm
+        &mut self.wl.shm
     }
 }
 
@@ -216,7 +216,7 @@ delegate_registry!(Sometime);
 
 impl ProvidesRegistryState for Sometime {
     fn registry(&mut self) -> &mut RegistryState {
-        &mut self.widget.registry_state
+        &mut self.wl.registry_state
     }
     registry_handlers![OutputState, SeatState];
 }

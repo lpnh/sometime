@@ -3,11 +3,11 @@ pub mod flock;
 pub mod ipc;
 mod registry;
 mod theme;
-pub mod widget;
+pub mod wayland;
 
 pub use canvas::Canvas;
 pub use theme::{Bgra, Theme};
-pub use widget::Widget;
+pub use wayland::Wayland;
 
 use chrono::{Datelike, Local, Timelike};
 use smithay_client_toolkit::shell::WaylandSurface;
@@ -29,7 +29,7 @@ pub enum View {
 }
 
 pub struct Sometime {
-    pub widget: Widget,
+    pub wl: Wayland,
     canvas: Canvas,
     pub state: State,
     should_redraw: bool,
@@ -40,10 +40,10 @@ pub struct Sometime {
 }
 
 impl Sometime {
-    pub fn new(widget: Widget, canvas: Canvas, exit_on_release: bool) -> Self {
+    pub fn new(wl: Wayland, exit_on_release: bool) -> Self {
         Self {
-            widget,
-            canvas,
+            wl,
+            canvas: Canvas::new(SIDE),
             state: State::Sleep,
             should_redraw: false,
             theme: Theme::default(),
@@ -56,12 +56,12 @@ impl Sometime {
     pub fn sleep(&mut self) {
         self.state = State::Sleep;
         self.canvas.clear();
-        self.widget.destroy_layer();
+        self.wl.destroy_layer();
     }
 
     pub fn init(&mut self, view: View, qh: &wayland_client::QueueHandle<Self>) {
         self.state = State::Init(view);
-        self.widget.create_layer_surface(qh, "sometime");
+        self.wl.create_layer_surface(qh, "sometime");
     }
 
     pub fn wake_up(&mut self, view: View) {
@@ -120,9 +120,9 @@ impl Sometime {
         let side = self.canvas.side;
         let stride = side * 4;
 
-        if let Some(layer) = self.widget.layer.as_ref()
+        if let Some(layer) = self.wl.layer.as_ref()
             && let Ok((buffer, surface)) =
-                self.widget
+                self.wl
                     .pool
                     .create_buffer(side, side, stride, Format::Argb8888)
         {
