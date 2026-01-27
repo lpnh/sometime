@@ -1,4 +1,4 @@
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::{Datelike, NaiveDate};
 use cosmic_text::{
     Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache,
     fontdb::{Database, Source},
@@ -181,7 +181,7 @@ impl Canvas {
         // Calculate grid dimensions
         let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
         let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
-        let days_in_month = Self::days_in_month(year, month);
+        let days_in_month = first_of_month.num_days_in_month() as i32;
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
 
         // Grid layout with 7 columns
@@ -381,16 +381,6 @@ impl Canvas {
         );
         buffer.shape_until_scroll(&mut self.font_system, false);
         buffer
-    }
-
-    fn days_in_month(year: i32, month: u32) -> i32 {
-        let (ny, nm) = if month == 12 {
-            (year + 1, 1)
-        } else {
-            (year, month + 1)
-        };
-        let next_month = NaiveDate::from_ymd_opt(ny, nm, 1).expect("days_in_month: invalid date");
-        (next_month - Duration::days(1)).day() as i32
     }
 
     fn set_pixel(buffer: &mut [u8], side: i32, x: i32, y: i32, color: Bgra) {
