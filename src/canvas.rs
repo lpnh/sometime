@@ -15,39 +15,37 @@ pub struct Canvas {
     pub calendar_bg_cache: Vec<u8>,
     font_system: FontSystem,
     swash_cache: SwashCache,
+    theme: Theme,
 }
 
 impl Canvas {
     pub fn new(side: i32) -> Self {
+        let theme = Theme::default();
+
+        let radius = (side / 2) as f32;
+        let clock_bg_cache = Self::draw_clock_bg(side, radius, &theme);
+        let calendar_bg_cache = Self::draw_calendar_bg(side, &theme);
+
         let font = Arc::new(include_bytes!("../fonts/Inter-Regular.ttf"));
         let mut font_db = Database::new();
         font_db.load_font_source(Source::Binary(font));
 
         Self {
             side,
-            radius: (side / 2) as f32,
-            pixel_data: vec![0u8; (side * side * 4) as usize],
-            clock_bg_cache: Vec::new(),
-            calendar_bg_cache: Vec::new(),
+            radius,
+            pixel_data: Self::new_buffer(side),
+            clock_bg_cache,
+            calendar_bg_cache,
             font_system: FontSystem::new_with_locale_and_db("en-US".into(), font_db),
             swash_cache: SwashCache::new(),
+            theme,
         }
     }
 
-    pub fn init(&mut self, theme: Theme) {
-        self.clear();
-        self.draw_clock_bg(theme);
-        self.clock_bg_cache = self.pixel_data.clone();
-
-        self.clear();
-        self.draw_calendar_bg(theme);
-        self.calendar_bg_cache = self.pixel_data.clone();
-    }
-
-    pub fn draw_clock_hands(&mut self, hour: u32, minute: u32, second: u32, theme: Theme) {
-        self.draw_hour_hand(hour, minute, theme.primary);
-        self.draw_minute_hand(minute, theme.primary);
-        self.draw_second_hand(second, theme.secondary);
+    pub fn draw_clock_hands(&mut self, hour: u32, minute: u32, second: u32) {
+        self.draw_hour_hand(hour, minute, self.theme.primary);
+        self.draw_minute_hand(minute, self.theme.primary);
+        self.draw_second_hand(second, self.theme.secondary);
     }
 
     fn draw_hour_hand(&mut self, hour: u32, minute: u32, color: Bgra) {
@@ -132,14 +130,16 @@ impl Canvas {
         }
     }
 
-    fn draw_clock_bg(&mut self, theme: Theme) {
-        let radius_sq = self.radius * self.radius;
-        let bg_radius_sq = (self.radius - 2.0) * (self.radius - 2.0);
+    fn draw_clock_bg(side: i32, radius: f32, theme: &Theme) -> Vec<u8> {
+        let mut buffer = Self::new_buffer(side);
 
-        for y in 0..self.side {
-            for x in 0..self.side {
-                let dx = x as f32 - self.radius;
-                let dy = y as f32 - self.radius;
+        let radius_sq = radius * radius;
+        let bg_radius_sq = (radius - 2.0) * (radius - 2.0);
+
+        for y in 0..side {
+            for x in 0..side {
+                let dx = x as f32 - radius;
+                let dy = y as f32 - radius;
                 let center_dist_sq = dx * dx + dy * dy;
 
                 // Center dot
@@ -155,9 +155,10 @@ impl Canvas {
                     continue; // Outside circle
                 };
 
-                self.set_pixel(x, y, color);
+                Self::set_pixel(&mut buffer, side, x, y, color);
             }
         }
+        buffer
     }
 
     pub fn clear(&mut self) {
@@ -176,7 +177,7 @@ impl Canvas {
         dx * dx + dy * dy
     }
 
-    pub fn draw_calendar_fonts(&mut self, year: i32, month: u32, today: u32, theme: Theme) {
+    pub fn draw_calendar_fonts(&mut self, year: i32, month: u32, today: u32) {
         // Calculate grid dimensions
         let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).expect("invalid date");
         let start_weekday = first_of_month.weekday().num_days_from_sunday() as i32;
@@ -184,7 +185,7 @@ impl Canvas {
         let rows_needed = (start_weekday + days_in_month + 6) / 7;
 
         // Grid layout with 7 columns
-        let (padding, cell_width, cell_height, month_height) = self.calendar_layout();
+        let (padding, cell_width, cell_height, month_height) = Self::calendar_layout(self.side);
 
         let weekday_font_size = (cell_width * 0.4).ceil();
         let day_font_size = (cell_width * 0.5).ceil();
@@ -209,7 +210,7 @@ impl Canvas {
             content_y,
             month_height as f32,
             total_width as f32 - 2.0 * padding as f32,
-            theme.primary,
+            self.theme.primary,
         );
         content_y += month_height + padding;
 
@@ -225,7 +226,7 @@ impl Canvas {
                 day_y,
                 weekday_font_size,
                 cell_width,
-                theme.secondary,
+                self.theme.secondary,
             );
         }
         content_y += cell_height;
@@ -256,7 +257,7 @@ impl Canvas {
                     text_y,
                     font_size,
                     cell_width,
-                    theme.secondary,
+                    self.theme.secondary,
                 );
                 self.draw_text(
                     &day_str,
@@ -264,7 +265,7 @@ impl Canvas {
                     text_y - 1,
                     font_size,
                     cell_width,
-                    theme.highlight,
+                    self.theme.highlight,
                 );
                 self.draw_text(
                     &day_str,
@@ -272,7 +273,7 @@ impl Canvas {
                     text_y - 2,
                     font_size,
                     cell_width,
-                    theme.highlight,
+                    self.theme.highlight,
                 );
             } else {
                 self.draw_text(
@@ -281,15 +282,17 @@ impl Canvas {
                     text_y,
                     font_size,
                     cell_width,
-                    theme.primary,
+                    self.theme.primary,
                 );
             }
         }
     }
 
-    fn draw_calendar_bg(&mut self, theme: Theme) {
+    fn draw_calendar_bg(side: i32, theme: &Theme) -> Vec<u8> {
+        let mut buffer = Self::new_buffer(side);
+
         // Grid layout with 7 columns
-        let (padding, cell_width, cell_height, month_height) = self.calendar_layout();
+        let (padding, cell_width, cell_height, month_height) = Self::calendar_layout(side);
         let frame_thickness = 2;
 
         // Calendar dimensions
@@ -298,35 +301,38 @@ impl Canvas {
         let height = 3 * padding + month_height + cell_height + max_rows_needed * cell_height;
 
         // Center on canvas
-        let x = (self.side - width) / 2;
-        let y = (self.side - height) / 2;
+        let x = (side - width) / 2;
+        let y = (side - height) / 2;
 
         // Draw frame
-        self.fill_rect(x, y, width, height, theme.frame);
+        Self::fill_rect(&mut buffer, side, x, y, width, height, theme.frame);
 
         // Draw background
-        self.fill_rect(
+        Self::fill_rect(
+            &mut buffer,
+            side,
             x + frame_thickness,
             y + frame_thickness,
             width - 2 * frame_thickness,
             height - 2 * frame_thickness,
             theme.background,
         );
+        buffer
     }
 
-    fn fill_rect(&mut self, x: i32, y: i32, width: i32, height: i32, color: Bgra) {
-        for py in y..(y + height).min(self.side) {
-            for px in x..(x + width).min(self.side) {
-                if px >= 0 && py >= 0 && px < self.side && py < self.side {
-                    self.set_pixel(px, py, color);
+    fn fill_rect(buffer: &mut [u8], side: i32, x: i32, y: i32, w: i32, h: i32, color: Bgra) {
+        for py in y..(y + h).min(side) {
+            for px in x..(x + w).min(side) {
+                if px >= 0 && py >= 0 && px < side && py < side {
+                    Self::set_pixel(buffer, side, px, py, color);
                 }
             }
         }
     }
 
-    fn calendar_layout(&self) -> (i32, f32, i32, i32) {
-        let padding = (self.side as f32 / 32.0).ceil() as i32;
-        let width = ((self.side - 2 * padding) / 7) as f32;
+    fn calendar_layout(side: i32) -> (i32, f32, i32, i32) {
+        let padding = (side as f32 / 32.0).ceil() as i32;
+        let width = ((side - 2 * padding) / 7) as f32;
         let height = (width * 0.7).ceil() as i32;
         let month_height = (width * 0.5).ceil() as i32;
 
@@ -387,10 +393,10 @@ impl Canvas {
         (next_month - Duration::days(1)).day() as i32
     }
 
-    fn set_pixel(&mut self, x: i32, y: i32, color: Bgra) {
-        let index = Self::pixel_idx(self.side, x, y);
-        if index + 3 < self.pixel_data.len() {
-            self.pixel_data[index..index + 4].copy_from_slice(color.as_ref());
+    fn set_pixel(buffer: &mut [u8], side: i32, x: i32, y: i32, color: Bgra) {
+        let index = Self::pixel_idx(side, x, y);
+        if index + 3 < buffer.len() {
+            buffer[index..index + 4].copy_from_slice(color.as_ref());
         }
     }
 
@@ -404,6 +410,11 @@ impl Canvas {
         pxl_data[idx] = Self::blend_color(color.b(), alpha, pxl_data[idx], inv_alpha);
         pxl_data[idx + 1] = Self::blend_color(color.g(), alpha, pxl_data[idx + 1], inv_alpha);
         pxl_data[idx + 2] = Self::blend_color(color.r(), alpha, pxl_data[idx + 2], inv_alpha);
+    }
+
+    #[inline]
+    fn new_buffer(side: i32) -> Vec<u8> {
+        vec![0u8; (side * side * 4) as usize]
     }
 
     #[inline]

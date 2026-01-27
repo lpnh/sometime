@@ -35,7 +35,6 @@ pub struct Sometime {
     canvas: Canvas,
     pub state: State,
     should_redraw: bool,
-    theme: Theme,
     pub exit_on_release: bool,
     pub last_second: u32,
     pub last_day: u32,
@@ -49,7 +48,6 @@ impl Sometime {
             canvas: Canvas::new(SIDE),
             state: State::Sleep,
             should_redraw: false,
-            theme: Theme::default(),
             last_second: u32::MAX,
             last_day: u32::MAX,
             exit_on_release,
@@ -70,7 +68,7 @@ impl Sometime {
 
     pub fn wake_up(&mut self, view: View) {
         self.state = State::Awake(view);
-        self.canvas.init(self.theme);
+        self.canvas.clear();
         self.draw();
         self.is_happening = true;
     }
@@ -97,12 +95,8 @@ impl Sometime {
                     self.canvas
                         .pixel_data
                         .copy_from_slice(&self.canvas.clock_bg_cache);
-                    self.canvas.draw_clock_hands(
-                        now.hour(),
-                        now.minute(),
-                        now.second(),
-                        self.theme,
-                    );
+                    self.canvas
+                        .draw_clock_hands(now.hour(), now.minute(), now.second());
 
                     self.last_second = now.second();
                 }
@@ -111,7 +105,7 @@ impl Sometime {
                         .pixel_data
                         .copy_from_slice(&self.canvas.calendar_bg_cache);
                     self.canvas
-                        .draw_calendar_fonts(now.year(), now.month(), now.day(), self.theme);
+                        .draw_calendar_fonts(now.year(), now.month(), now.day());
 
                     self.last_day = now.day();
                 }
