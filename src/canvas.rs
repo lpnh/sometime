@@ -1,6 +1,9 @@
 use chrono::{Datelike, Duration, NaiveDate};
-use cosmic_text::{Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
-use std::f32::consts::PI;
+use cosmic_text::{
+    Align, Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache,
+    fontdb::{Database, Source},
+};
+use std::{f32::consts::PI, sync::Arc};
 
 use super::theme::{Bgra, Theme};
 
@@ -16,13 +19,17 @@ pub struct Canvas {
 
 impl Canvas {
     pub fn new(side: i32) -> Self {
+        let font = Arc::new(include_bytes!("../fonts/Inter-Regular.ttf"));
+        let mut font_db = Database::new();
+        font_db.load_font_source(Source::Binary(font));
+
         Self {
             side,
             radius: (side / 2) as f32,
             pixel_data: vec![0u8; (side * side * 4) as usize],
             clock_bg_cache: Vec::new(),
             calendar_bg_cache: Vec::new(),
-            font_system: FontSystem::new(),
+            font_system: FontSystem::new_with_locale_and_db("en-US".into(), font_db),
             swash_cache: SwashCache::new(),
         }
     }
