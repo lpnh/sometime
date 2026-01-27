@@ -18,7 +18,7 @@ pub fn setup_listener() -> anyhow::Result<UnixListener> {
     Ok(UnixListener::bind(&socket_path)?)
 }
 
-pub fn recv_command(stream: UnixStream) -> anyhow::Result<Command> {
+pub fn recv_cmd(stream: UnixStream) -> anyhow::Result<Command> {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
 

@@ -13,7 +13,7 @@ pub use wayland::Wayland;
 
 use chrono::{Datelike, Local, Timelike};
 use smithay_client_toolkit::shell::WaylandSurface;
-use wayland_client::protocol::wl_shm::Format;
+use wayland_client::{QueueHandle, protocol::wl_shm::Format};
 
 pub const SIDE: i32 = 448;
 
@@ -61,7 +61,7 @@ impl Sometime {
         self.wl.destroy_layer();
     }
 
-    pub fn init(&mut self, view: View, qh: &wayland_client::QueueHandle<Self>) {
+    pub fn init(&mut self, view: View, qh: &QueueHandle<Self>) {
         self.state = State::Init(view);
         self.wl.create_layer_surface(qh, "sometime");
     }

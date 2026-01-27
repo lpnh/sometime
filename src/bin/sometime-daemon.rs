@@ -37,17 +37,15 @@ fn main() -> anyhow::Result<()> {
     loop_handle.insert_source(event_source, move |readiness, listener, app| {
         if readiness.readable
             && let Ok((stream, _)) = listener.accept()
-            && let Ok(cmd) = ipc::recv_command(stream)
+            && let Ok(cmd) = ipc::recv_cmd(stream)
         {
             match cmd {
                 Command::Dismiss => app.wl.exit = true,
-                Command::Clock | Command::Calendar => {
-                    match app.state {
-                        State::Sleep => app.init(cmd.into(), &qh),
-                        State::Awake(view) if cmd == view => app.sleep(), // toggle
-                        _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
-                    }
-                }
+                Command::Clock | Command::Calendar => match app.state {
+                    State::Sleep => app.init(cmd.into(), &qh),
+                    State::Awake(view) if cmd == view => app.sleep(), // toggle
+                    _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
+                },
             }
         }
         Ok(PostAction::Continue)
