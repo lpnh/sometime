@@ -39,6 +39,7 @@ pub struct Sometime {
     pub exit_on_release: bool,
     pub last_second: u32,
     pub last_day: u32,
+    pub is_happening: bool,
 }
 
 impl Sometime {
@@ -52,6 +53,7 @@ impl Sometime {
             last_second: u32::MAX,
             last_day: u32::MAX,
             exit_on_release,
+            is_happening: false,
         }
     }
 
@@ -70,6 +72,7 @@ impl Sometime {
         self.state = State::Awake(view);
         self.canvas.init(self.theme);
         self.draw();
+        self.is_happening = true;
     }
 
     pub fn request_redraw(&mut self, view: View) {

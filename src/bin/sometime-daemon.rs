@@ -5,7 +5,7 @@ use smithay_client_toolkit::reexports::{
     },
     calloop_wayland_source::WaylandSource,
 };
-use std::{env, time::Duration};
+use std::time::{Duration, Instant};
 use wayland_client::{Connection, globals};
 
 use sometime::{Sometime, State, Wayland, flock, ipc};
@@ -13,7 +13,7 @@ use sometime::{Sometime, State, Wayland, flock, ipc};
 fn main() -> anyhow::Result<()> {
     let _lock = flock::try_acquire_daemon_lock()?;
 
-    let exit_on_release = env::args()
+    let exit_on_release = std::env::args()
         .nth(1)
         .is_some_and(|arg| arg == "--exit-on-release");
 
@@ -30,14 +30,7 @@ fn main() -> anyhow::Result<()> {
     WaylandSource::new(conn, event_queue).insert(loop_handle.clone())?;
 
     let timer = Timer::from_duration(next_tick());
-    loop_handle
-        .insert_source(timer, |_deadline, _timer_handle, app| {
-            if let State::Awake(view) = app.state {
-                app.request_redraw(view);
-            }
-            TimeoutAction::ToDuration(next_tick())
-        })
-        .ok();
+    loop_handle.insert_source(timer, is_happening).ok();
 
     let ipc_listener = ipc::setup_listener()?;
     let event_source = Generic::new(ipc_listener, Interest::READ, Mode::Level);
@@ -62,6 +55,12 @@ fn main() -> anyhow::Result<()> {
 
         app.consume_redraw();
 
+        if app.is_happening {
+            let timer = Timer::from_duration(next_tick());
+            loop_handle.insert_source(timer, is_happening).ok();
+            app.is_happening = false;
+        }
+
         if app.wl.exit {
             break;
         }
@@ -70,6 +69,15 @@ fn main() -> anyhow::Result<()> {
     ipc::unlink_socket()?;
 
     Ok(())
+}
+
+fn is_happening(_: Instant, _: &mut (), app: &mut Sometime) -> TimeoutAction {
+    if let State::Awake(view) = app.state {
+        app.request_redraw(view);
+        TimeoutAction::ToDuration(next_tick())
+    } else {
+        TimeoutAction::Drop
+    }
 }
 
 fn next_tick() -> Duration {
