@@ -8,7 +8,7 @@ use smithay_client_toolkit::reexports::{
 use std::time::{Duration, Instant};
 use wayland_client::{Connection, globals};
 
-use sometime::{Sometime, State, Wayland, flock, ipc};
+use sometime::{Command, Sometime, State, Wayland, flock, ipc};
 
 fn main() -> anyhow::Result<()> {
     let _lock = flock::try_acquire_daemon_lock()?;
@@ -39,12 +39,15 @@ fn main() -> anyhow::Result<()> {
             && let Ok((stream, _)) = listener.accept()
             && let Ok(cmd) = ipc::recv_command(stream)
         {
-            // handle `sometime <clock|calendar>` command
-            let new_view = cmd.into();
-            match app.state {
-                State::Sleep => app.init(new_view, &qh),
-                State::Awake(view) if view == new_view => app.sleep(), // toggle
-                _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
+            match cmd {
+                Command::Dismiss => app.wl.exit = true,
+                Command::Clock | Command::Calendar => {
+                    match app.state {
+                        State::Sleep => app.init(cmd.into(), &qh),
+                        State::Awake(view) if cmd == view => app.sleep(), // toggle
+                        _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
+                    }
+                }
             }
         }
         Ok(PostAction::Continue)

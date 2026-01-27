@@ -66,7 +66,7 @@ impl OutputHandler for Sometime {
 
 impl LayerShellHandler for Sometime {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
-        self.wl.exit = true;
+        self.sleep();
     }
 
     fn configure(
@@ -157,7 +157,7 @@ impl KeyboardHandler for Sometime {
 
         // Exit on `esc` or `q`
         if pressed_key == Keysym::Escape || pressed_key == Keysym::q {
-            self.wl.exit = true;
+            self.sleep();
         }
     }
 
@@ -181,8 +181,6 @@ impl KeyboardHandler for Sometime {
     ) {
         // --exit-on-release
         if self.exit_on_release {
-            self.wl.exit = true;
-        } else {
             self.sleep();
         }
     }

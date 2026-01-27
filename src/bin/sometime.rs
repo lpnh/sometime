@@ -10,7 +10,7 @@ fn main() {
             }
         }
     } else {
-        eprintln!("Usage: sometime <clock|calendar>");
+        eprintln!("Usage: sometime <clock|calendar|dismiss>");
         std::process::exit(1);
     }
 }
