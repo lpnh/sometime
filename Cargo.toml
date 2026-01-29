@@ -1,6 +1,6 @@
 [package]
 name = "sometime"
-version = "26.1.25"
+version = "26.1.29"
 edition = "2024"
 
 [dependencies]
