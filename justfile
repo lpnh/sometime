@@ -3,7 +3,7 @@ set quiet
 default: clippy
 
 fmt:
-    rustfmt +nightly **/*.rs --edition 2024
+    rustfmt +nightly src/**/*.rs --edition 2024
 
 clippy: fmt
     cargo clippy
@@ -27,8 +27,6 @@ bump-version: clean
     CV="${VERSION#v}"
     sed -i 's/^version = ".*"/version = "'"$CV"'"/' Cargo.toml
     cargo check
-    git add Cargo.toml Cargo.lock
-    git commit -m "chore: bump version"
-    git tag "$VERSION"
-    git push
+    jj describe -m "chore: bump version"
+    jj tag set "$VERSION"
     git push origin "$VERSION"
