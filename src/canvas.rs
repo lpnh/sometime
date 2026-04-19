@@ -321,11 +321,9 @@ impl Canvas {
     }
 
     fn fill_rect(buffer: &mut [u8], side: i32, x: i32, y: i32, w: i32, h: i32, color: Bgra) {
-        for py in y..(y + h).min(side) {
-            for px in x..(x + w).min(side) {
-                if px >= 0 && py >= 0 && px < side && py < side {
-                    Self::set_pixel(buffer, side, px, py, color);
-                }
+        for py in y.max(0)..(y + h).min(side) {
+            for px in x.max(0)..(x + w).min(side) {
+                Self::set_pixel(buffer, side, px, py, color);
             }
         }
     }
