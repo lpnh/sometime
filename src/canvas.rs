@@ -338,7 +338,7 @@ impl Canvas {
     }
 
     fn draw_text(&mut self, text: &str, x: i32, y: i32, font_size: f32, width: f32, color: Bgra) {
-        let buffer = self.create_drawing_buffer(text, font_size, width);
+        let mut buffer = self.create_drawing_buffer(text, font_size, width);
         // Convert BGRA to RGBA
         let text_color = Color::rgba(color.r(), color.g(), color.b(), color.a());
 
@@ -369,14 +369,8 @@ impl Canvas {
     fn create_drawing_buffer(&mut self, text: &str, font_size: f32, width: f32) -> Buffer {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        buffer.set_size(&mut self.font_system, Some(width), Some(self.side as f32));
-        buffer.set_text(
-            &mut self.font_system,
-            text,
-            &Attrs::new(),
-            Shaping::Advanced,
-            Some(Align::Center),
-        );
+        buffer.set_size(Some(width), Some(self.side as f32));
+        buffer.set_text(text, &Attrs::new(), Shaping::Advanced, Some(Align::Center));
         buffer.shape_until_scroll(&mut self.font_system, false);
         buffer
     }
