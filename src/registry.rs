@@ -17,7 +17,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_seat, wl_surface},
 };
 
-use crate::{Sometime, State};
+use crate::{Event, Sometime};
 
 impl CompositorHandler for Sometime {
     fn scale_factor_changed(
@@ -65,21 +65,19 @@ impl OutputHandler for Sometime {
 }
 
 impl LayerShellHandler for Sometime {
-    fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
-        self.sleep();
+    fn closed(&mut self, _conn: &Connection, qh: &QueueHandle<Self>, _layer: &LayerSurface) {
+        self.handle(Event::Close, qh);
     }
 
     fn configure(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _layer: &LayerSurface,
         _configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        if let State::Init(view) = self.state {
-            self.wake_up(view);
-        }
+        self.handle(Event::Configure, qh);
     }
 }
 
@@ -148,16 +146,16 @@ impl KeyboardHandler for Sometime {
     fn press_key(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
         event: KeyEvent,
     ) {
         let pressed_key = event.keysym;
 
-        // Exit on `esc` or `q`
+        // Close on `esc` or `q`
         if pressed_key == Keysym::Escape || pressed_key == Keysym::q {
-            self.sleep();
+            self.handle(Event::Close, qh);
         }
     }
 
@@ -174,14 +172,14 @@ impl KeyboardHandler for Sometime {
     fn release_key(
         &mut self,
         _: &Connection,
-        _: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
         _: KeyEvent,
     ) {
         // --exit-on-release
         if self.exit_on_release {
-            self.sleep();
+            self.handle(Event::Close, qh);
         }
     }
 

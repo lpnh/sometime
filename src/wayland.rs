@@ -50,7 +50,7 @@ impl Wayland {
         }
     }
 
-    pub fn create_layer_surface(&mut self, qh: &QueueHandle<Sometime>, namespace: &str) {
+    pub fn create_layer(&mut self, qh: &QueueHandle<Sometime>, namespace: &str) {
         let surface = self.compositor.create_surface(qh);
         let layer = self.layer_shell.create_layer_surface(
             qh,

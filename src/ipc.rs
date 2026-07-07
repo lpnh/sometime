@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::{
     io::{BufRead, BufReader, Read, Write},
     os::unix::net::{UnixListener, UnixStream},
@@ -47,7 +48,7 @@ pub fn unlink_socket() -> anyhow::Result<()> {
 
 pub fn invoke_daemon(command: Command) -> anyhow::Result<String> {
     let socket_path = socket_path()?;
-    let mut stream = UnixStream::connect(&socket_path)?;
+    let mut stream = UnixStream::connect(&socket_path).context("is sometime-daemon running?")?;
     stream.write_all(command.to_string().as_bytes())?;
     stream.write_all(b"\n")?;
 

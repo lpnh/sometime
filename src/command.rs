@@ -1,4 +1,4 @@
-use crate::View;
+use crate::{Event, View};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
@@ -30,21 +30,12 @@ impl std::fmt::Display for Command {
     }
 }
 
-impl From<Command> for View {
+impl From<Command> for Event {
     fn from(cmd: Command) -> Self {
         match cmd {
-            Command::Clock => Self::Clock,
-            Command::Calendar => Self::Calendar,
-            _ => panic!(),
+            Command::Clock => Event::Toggle(View::Clock),
+            Command::Calendar => Event::Toggle(View::Calendar),
+            Command::Dismiss => Event::Quit,
         }
-    }
-}
-
-impl PartialEq<View> for Command {
-    fn eq(&self, other: &View) -> bool {
-        matches!(
-            (self, other),
-            (Command::Clock, View::Clock) | (Command::Calendar, View::Calendar)
-        )
     }
 }

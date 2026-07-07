@@ -161,10 +161,6 @@ impl Canvas {
         buffer
     }
 
-    pub fn clear(&mut self) {
-        self.pixel_data.fill(0);
-    }
-
     #[inline]
     fn pixel_idx(side: i32, x: i32, y: i32) -> usize {
         ((y * side + x) * 4) as usize

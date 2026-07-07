@@ -1,14 +1,14 @@
-use chrono::Local;
+use chrono::{Datelike, Local, Timelike};
 use smithay_client_toolkit::reexports::{
     calloop::{
         EventLoop, Interest, Mode, PostAction, generic::Generic, timer::TimeoutAction, timer::Timer,
     },
     calloop_wayland_source::WaylandSource,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use wayland_client::{Connection, globals};
 
-use sometime::{Command, Sometime, State, Wayland, flock, ipc};
+use sometime::{Sometime, State, View, Wayland, flock, ipc};
 
 fn main() -> anyhow::Result<()> {
     let _lock = flock::try_acquire_daemon_lock()?;
@@ -29,9 +29,6 @@ fn main() -> anyhow::Result<()> {
 
     WaylandSource::new(conn, event_queue).insert(loop_handle.clone())?;
 
-    let timer = Timer::from_duration(next_tick());
-    loop_handle.insert_source(timer, is_happening).ok();
-
     let ipc_listener = ipc::setup_listener()?;
     let event_source = Generic::new(ipc_listener, Interest::READ, Mode::Level);
     loop_handle.insert_source(event_source, move |readiness, listener, app| {
@@ -39,14 +36,7 @@ fn main() -> anyhow::Result<()> {
             && let Ok((stream, _)) = listener.accept()
             && let Ok(cmd) = ipc::recv_cmd(stream)
         {
-            match cmd {
-                Command::Dismiss => app.wl.exit = true,
-                Command::Clock | Command::Calendar => match app.state {
-                    State::Sleep => app.init(cmd.into(), &qh),
-                    State::Awake(view) if cmd == view => app.sleep(), // toggle
-                    _ => {} // ensure sleep -> init -> awake -> sleep lifecycle
-                },
-            }
+            app.handle(cmd.into(), &qh);
         }
         Ok(PostAction::Continue)
     })?;
@@ -54,12 +44,30 @@ fn main() -> anyhow::Result<()> {
     loop {
         event_loop.dispatch(None, &mut app)?;
 
-        app.consume_redraw();
-
-        if app.is_happening {
+        if matches!(app.state, State::Awake(_)) && !app.is_happening {
             let timer = Timer::from_duration(next_tick());
-            loop_handle.insert_source(timer, is_happening).ok();
-            app.is_happening = false;
+
+            loop_handle
+                .insert_source(timer, |_, _, app| {
+                    let State::Awake(view) = app.state else {
+                        app.is_happening = false;
+                        return TimeoutAction::Drop;
+                    };
+
+                    let now = Local::now();
+
+                    if match view {
+                        View::Clock => app.last_second != now.second(),
+                        View::Calendar => app.last_day != now.day(),
+                    } {
+                        app.draw();
+                    }
+
+                    TimeoutAction::ToDuration(next_tick())
+                })
+                .map_err(|e| e.error)?;
+
+            app.is_happening = true;
         }
 
         if app.wl.exit {
@@ -70,15 +78,6 @@ fn main() -> anyhow::Result<()> {
     ipc::unlink_socket()?;
 
     Ok(())
-}
-
-fn is_happening(_: Instant, _: &mut (), app: &mut Sometime) -> TimeoutAction {
-    if let State::Awake(view) = app.state {
-        app.request_redraw(view);
-        TimeoutAction::ToDuration(next_tick())
-    } else {
-        TimeoutAction::Drop
-    }
 }
 
 fn next_tick() -> Duration {
